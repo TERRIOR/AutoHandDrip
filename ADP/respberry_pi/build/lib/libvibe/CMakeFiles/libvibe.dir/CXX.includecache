@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ubuntu/project/opencvpro/vibe/lib/libvibe/Vibe.cpp
+Vibe.h
+/home/ubuntu/project/opencvpro/vibe/lib/libvibe/Vibe.h
+
+/home/ubuntu/project/opencvpro/vibe/lib/libvibe/Vibe.h
+iostream
+-
+opencv2/opencv.hpp
+/home/ubuntu/project/opencvpro/vibe/lib/libvibe/opencv2/opencv.hpp
+

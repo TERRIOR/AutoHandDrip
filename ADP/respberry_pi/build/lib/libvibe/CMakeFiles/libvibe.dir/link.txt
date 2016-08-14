@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../liblibvibe.a  CMakeFiles/libvibe.dir/Vibe.o
+/usr/bin/ranlib ../liblibvibe.a

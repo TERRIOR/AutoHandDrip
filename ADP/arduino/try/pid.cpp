@@ -10,8 +10,8 @@
 #else
   #include "WProgram.h"
 #endif
- 
 #include "pid.h"
+//自己修改部分
 float lasttemp;
 int TFILTER_N=3;
 float Buffer[3];

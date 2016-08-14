@@ -1,10 +1,9 @@
 #include <Servo.h>
 #include "ang.h"
-#include "Max6675.h"
+#include "Max6675_1.h"
 #include"pid.h"
 #define RelayPin 13
 Max6675 ts(9, 10,11);
-
 // 定义我们将要使用的变量
 double Setpoint, Input, Output;
 //指定链接和最初的调优参数
@@ -16,7 +15,7 @@ Servo myservo1,myservo2,myservo3;
 String comdata = "";
 angle ang={0,0,0};//写默认的角度 暂时先写0,0,0
 float x_max=100,y_max=100,z_max=100;
-
+void receive();
 void setup() {
   Serial.begin(9600);
   //机械手部分的初始化
@@ -42,58 +41,19 @@ void setup() {
 }
 
 void loop() {  
-  //接收信号
- while (Serial.available() > 0)  
-    {
-        comdata += char(Serial.read());
-        delay(2);//为了防止数据丢失,在此设置短暂延时delay(2)
-    }
-    //将信号转化为1脚的坐标
-    if (comdata.length() > 0)
-    {
-        float c;
-        String a;
-        int b;     
-        switch( comdata[0]){
-          case 'x':
-          a=comdata.substring(1);
-          b=a.toInt();//在此把comdata转化成INT型数值,以备后续使用
-          c=(float) b;
-          if(c>x_max) c=x_max;
-          x=c;
-          break;
-          case 'y':
-          a=comdata.substring(1);
-          b=a.toInt();
-          c=(float) b;
-          if(c>y_max) c=y_max;
-          y=c;
-          break;
-         case 'z':
-          a=comdata.substring(1);
-          b=a.toInt();
-          c=(float) b;
-          if(c>z_max) c=z_max;
-          z=c;
-          break;
-          }
-          comdata = String("");//清空字符串;
-//分别计算出另外两条腿的坐标
-         
-          xyztoangle(x, y, z, &ang);
-          //Serial.println(ang.angle1);
-          //Serial.println(ang.angle2);
-          //Serial.println(ang.angle3);
-          myservo1.write(ang.angle1);
-          myservo2.write(ang.angle2);
-          myservo3.write(ang.angle3);
-    }
-
-//滤波去除误差，并输入温度
- filter(ts.getCelsius(),error,&Input);
-
-//滤波加平均值去除误差
-//average_filter(ts.getCelsius(),error,&Input);
+  //接收信号,并处理
+  receive();
+  xyztoangle(x, y, z, &ang);
+  //Serial.println(ang.angle1);
+  //Serial.println(ang.angle2);
+  //Serial.println(ang.angle3);
+  myservo1.write(ang.angle1);
+  myservo2.write(ang.angle2);
+  myservo3.write(ang.angle3);
+  //滤波去除误差，并输入温度
+  filter(ts.getCelsius(),error,&Input);
+  //滤波加平均值去除误差
+  //average_filter(ts.getCelsius(),error,&Input);
   
   myPID.Compute();//计算是否需要重新计算
  
@@ -115,6 +75,44 @@ void loop() {
 
     
 }
-
+void receive(){
+  while (Serial.available() > 0)  
+  {
+    comdata += char(Serial.read());
+    delay(2);//为了防止数据丢失,在此设置短暂延时delay(2)
+  }
+    //将信号转化为1脚的坐标
+  if (comdata.length() > 0)
+  {
+     float c;
+     String a;
+     int b;     
+     switch( comdata[0]){
+     case 'x':
+       a=comdata.substring(1);
+       b=a.toInt();//在此把comdata转化成INT型数值,以备后续使用
+       c=(float) b;
+       if(c>x_max) c=x_max;
+       x=c;
+     break;
+     case 'y':
+       a=comdata.substring(1);
+       b=a.toInt();
+       c=(float) b;
+       if(c>y_max) c=y_max;
+       y=c;
+     break;
+     case 'z':
+       a=comdata.substring(1);
+       b=a.toInt();
+       c=(float) b;
+       if(c>z_max) c=z_max;
+       z=c;
+     break;
+   }
+   comdata = String("");//清空字符串;
+//分别计算出另外两条腿的坐标
+  }
+}
 
 

@@ -42,13 +42,13 @@ int main(int argc, char* argv[])
 	//进行形态学操作  
 	morphologyEx(frame_gray, frame_gray, MORPH_OPEN, element);
 	Canny(frame_gray, frame_gray, g_cannyLowThreshold, g_cannyLowThreshold * 3, 3);
-	vector<vector<Point>> contours;
+	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours(frame_gray, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 	//////////////////////////////////////////////////////
 	unsigned int cmin = 200;
 	unsigned int cmax = 2000;
-	vector<vector<Point>>::iterator itc = contours.begin();
+	vector<vector<Point> >::iterator itc = contours.begin();
 	while (itc != contours.end())
 	{
 		if (itc->size()<cmin || itc->size()>cmax  )
@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
 			imshow("dst", c_gray);
 			Canny(c_gray, c_gray, g_cannyLowThreshold, g_cannyLowThreshold * 3, 3);
 			findContours(c_gray, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-			vector<vector<Point>>::iterator itContours = contours.begin();
+			vector<vector<Point> >::iterator itContours = contours.begin();
 			for (; itContours != contours.end(); ++itContours) {
 
 				cout << "Size: " << itContours->size() << ends;//每个轮廓包含的点数
@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
 			cout << "Contours: " << contours.size() << endl;
 			unsigned int cmin = 200;
 			unsigned int cmax =500;
-			vector<vector<Point>>::iterator itc = contours.begin();
+			vector<vector<Point> >::iterator itc = contours.begin();
 			while (itc != contours.end())
 			{
 				if ((!isclose(*itc))||itc->size()<cmin || itc->size()>cmax )

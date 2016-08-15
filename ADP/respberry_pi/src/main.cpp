@@ -5,18 +5,20 @@ using namespace cv;
 using namespace std;
 #define MAX_GRAY_VALUE 256
 #define MIN_GRAY_VALUE 0
-const int g_cannyLowThreshold = 3;
+const int g_cannyLowThreshold =3;
+const int c_rectr = 20;
 int getarea(Mat img);
 int otsu(cv::Mat&dst);
 int otsu(cv::Mat&dst, cv::Mat&mask);
+bool isclose(vector<Point> contour);
 int main(int argc, char* argv[])
 {
 	Mat frame, gray, mask ,f1;
 	VideoCapture capture;
-	
+	RotatedRect ellisperectmax,rrect;
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, 320);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
-	capture.open("3.avi");	
+	capture.open("3.avi");
 	if (!capture.isOpened())
 	{
 		cout << "No camera or video input!\n" << endl;
@@ -27,47 +29,26 @@ int main(int argc, char* argv[])
 	bool count = true;
 	capture >> f1;
 	capture >> frame;
-	//GaussianBlur(f1, f1, Size(3, 3), 0, 0);
-	////////////////////////////////È¡³ö×îÍâ²ãµÄÂË±­È¦//////////////////////////////
+	////////////////////////////////å–å‡ºæœ€å¤–å±‚çš„æ»¤æ¯åœˆ//////////////////////////////
 	Mat frame_gray,framecp;
 	Mat cmask;
+	Rect re;
+	int c_size;
 	frame.copyTo(framecp);
 	cvtColor(frame, frame_gray, CV_RGB2GRAY);
-	GaussianBlur(frame_gray, frame_gray, Size(35, 35), 0, 0);//¸ßË¹±ØĞëÎªÆæÊı
-	//imshow("gaosi", frame_gray);
-	//imshow("¶şÖµ»¯", dst);
-	//bilateralFilter(frame_gray, dst1, 35, 35 * 2, 35 / 2);
-	//imshow("Ë«±ßÂË²¨", frame_gray);
-	//threshold(dst1, dst,0, 255, THRESH_BINARY|THRESH_OTSU);
-	int a = otsu(frame_gray);//´óÂÉËã·¨
-	cout << "otsu¶şÖµ»¯£º" << a << endl;
-	frame_gray = frame_gray > a;
-	//ImgStrong(dst, dst);
+	GaussianBlur(frame_gray, frame_gray, Size(35, 35), 0, 0);//é«˜æ–¯å¿…é¡»ä¸ºå¥‡æ•°
+	threshold(frame_gray, frame_gray, 0, 255, THRESH_BINARY | THRESH_OTSU);
 	Mat element = getStructuringElement(MORPH_ELLIPSE, Size(12, 12));
-	//½øĞĞĞÎÌ¬Ñ§²Ù×÷  
+	//è¿›è¡Œå½¢æ€å­¦æ“ä½œ  
 	morphologyEx(frame_gray, frame_gray, MORPH_OPEN, element);
-
 	Canny(frame_gray, frame_gray, g_cannyLowThreshold, g_cannyLowThreshold * 3, 3);
-	//imshow("canny", dst);
-
-	vector<vector<Point> > contours;
+	vector<vector<Point>> contours;
 	vector<Vec4i> hierarchy;
 	findContours(frame_gray, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-	int in = 0;
-
 	//////////////////////////////////////////////////////
-
-	vector<vector<Point> >::const_iterator itContours = contours.begin();
-	for (; itContours != contours.end(); ++itContours) {
-
-		cout << "Size: " << itContours->size() << ends;//Ã¿¸öÂÖÀª°üº¬µÄµãÊı
-	}
-	cout << endl;
-	cout << "Contours: " << contours.size() << endl;
-	unsigned int cmin = 300;
+	unsigned int cmin = 200;
 	unsigned int cmax = 2000;
-	vector<vector<Point> >::iterator itc = contours.begin();
-	int last=0;
+	vector<vector<Point>>::iterator itc = contours.begin();
 	while (itc != contours.end())
 	{
 		if (itc->size()<cmin || itc->size()>cmax  )
@@ -79,8 +60,8 @@ int main(int argc, char* argv[])
 		}
 		
 	}
-	cout << "Contours: " << contours.size() << "  " << ends;
-	cout << endl;
+	//cout << "Contours: " << contours.size() << "  " << ends;
+	//cout << endl;
 	/////////////////////////////////////
 	if (contours.size() > 0){
 		itc = contours.begin();
@@ -99,24 +80,35 @@ int main(int argc, char* argv[])
 			itc++;
 			i++;
 		}
-		//cout << "max:" << max << "µÚ" << j << endl;
-		RotatedRect rrect = fitEllipse(Mat(contours[j]));
-		ellipse(framecp, rrect, Scalar(rand() & 255, rand() & 255, rand() & 255), 8);
+		//cout << "max:" << max << "ç¬¬" << j << endl;
+		c_size = max;
+		ellisperectmax = fitEllipse(Mat(contours[j]));
+		cout << "height:" << ellisperectmax.size.height << "width:" << ellisperectmax.size.width << "area:" << ellisperectmax.size.area() << endl;
+		re = boundingRect(contours[j]);//roiæ„Ÿå…´è¶£åŒºåŸŸï¼Œå…¶ä»–å»é™¤
+		ellipse(framecp, ellisperectmax, Scalar(rand() & 255, rand() & 255, rand() & 255), 8);
 		imshow("framecp", framecp);
 		cmask = Mat::zeros(frame.size(), CV_8UC1);
 		cmask.setTo(0);
-		ellipse(cmask, rrect, Scalar(255), -1);
-		imshow("ellipse", cmask);
+		ellipse(cmask, ellisperectmax, Scalar(255), -1);
+		cmask = cmask(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
+		ellisperectmax.center.x = ellisperectmax.center.x - re.x-15;//æ¶ˆé™¤åˆ‡é™¤ååœ†å¿ƒçš„åç§»
+		ellisperectmax.center.y = ellisperectmax.center.y - re.y-15;//åŒä¸Š
+		//Mat cmask2 = Mat::zeros(frame.size(), CV_8UC1);
+		//circle(cmask2, c_point, c_rectr, Scalar(255));
+		//imshow("ellipse", cmask);
+		//imshow("ellipse", cmask2);
 	}
 	while (1)
 	{
 		capture >> frame;
 		if (frame.empty())
 			continue;
-		cout << "rows:"<<frame.rows<<"col:"<<frame.cols<< endl;
+		frame = frame( Rect(re.x+15,re.y+15,re.size().width-30,re.size().height-30));//åªå–å‡ºä¸­å¿ƒéƒ¨åˆ†ï¼Œå…¶ä½™ä¸è¦ï¼Œå¯å‡å°‘éå†æ—¶è¿ç®—ï¼ŒåŠ å¿«é€Ÿåº¦
 		cvtColor(frame, gray, CV_RGB2GRAY);
 		if (count)
 		{
+			
+			cout << "rows:"<<frame.rows<<"col:"<<frame.cols<< endl;
 			Vibe_Bgs.init(gray);
 			Vibe_Bgs.processFirstFrame(gray);
 			cout << " Training ViBe complete!" << endl;
@@ -129,97 +121,110 @@ int main(int argc, char* argv[])
 			
 			Mat element = getStructuringElement(MORPH_ELLIPSE, Size(7,7));
 			morphologyEx(mask, mask, MORPH_OPEN, element);
+			
 			int mask_area = 0;
-			mask_area=getarea(mask);
+			mask_area=getarea(mask);//è¿™é‡Œçš„maskéœ€è¦æ”¹æˆåªæœ‰æ³¨æ°´æ†åŒºåŸŸï¼ˆç›®å‰è¿˜åŒ…æ‹¬ç²‰å±‚çš„æ‰©æ•£ï¼‰
 			cout << "area:"<<mask_area<< endl;
 
-			if (mask_area<4000)
+			if (mask_area<1000)
 			{
 				frame.copyTo(f1);
 				cout << "f1update"<< endl;
 			}
 			//imshow("f1", f1);
-			
 			//imshow("mask", mask);
-			
 			Mat frame2(Scalar(255));
 			frame2.setTo(255);
 			Mat frame_gs;
 			Mat frame3;
 			frame.copyTo(frame3, mask);
-			imshow("frame3", frame3);
-			//GaussianBlur(frame, frame_gs, Size(3, 3), 0, 0);
+			//imshow("frame3", frame3);
+	
 			f1.copyTo(frame2, mask);
-			mask = 255 - mask;//maskÈ¡·´ ´ËÊ±maskÎªÃ»ÔË¶¯ÇøÓò
+			mask = 255 - mask;//maskå–å æ­¤æ—¶maskä¸ºæ²¡è¿åŠ¨åŒºåŸŸ
 			frame.copyTo(frame2, mask);
 			Mat frame2_gray;
 			cvtColor(frame2, frame2_gray, CV_RGB2GRAY);
 			//GaussianBlur(frame2_gray, frame2_gray, Size(3, 3), 0, 0);
-			//element = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
-			//½øĞĞĞÎÌ¬Ñ§²Ù×÷  
+			element = getStructuringElement(MORPH_ELLIPSE, Size(12, 12));
+			//è¿›è¡Œå½¢æ€å­¦æ“ä½œ  
 			//morphologyEx(frame2_gray, frame2_gray, MORPH_OPEN, element);
 			Mat dst1;
-			//mask = cmask&mask;//´ËÊ±maskÎªÍÖÔ²ÄÚÃ»ÔË¶¯ÇøÓò
-			int a = otsu(gray, cmask);
+			//mask = cmask&mask;//æ­¤æ—¶maskä¸ºæ¤­åœ†å†…æ²¡è¿åŠ¨åŒºåŸŸ
+			GaussianBlur(gray, gray, Size(13, 13), 0, 0);
+			morphologyEx(gray, gray, MORPH_CLOSE, element);
+			int a = otsu(gray, cmask);//åªå¯¹cmaskäºŒå€¼åŒ–ï¼ˆé¿å…å››ä¸ªè§’å‰©ä½™çš„è“é»‘è‰²éƒ¨åˆ†å½±å“ï¼‰
+			cout << "a:" << a<<endl;
+			//Mat gray_roi;//è®¾ç½®roi
+			//gray_roi = gray(re);//æŠŠé‚£ä¸ªåŒºåŸŸæ‹¿å‡ºæ¥ï¼›
+			//imshow("roi", gray_roi);
 			gray = gray > a;
-			imshow("dst", gray);
-			imshow("f2", frame2_gray);
+			Mat c_gray;
+			gray.copyTo(c_gray, cmask);
+			
+			//erode(c_gray, c_gray, element);//è…èš€æ“ä½œ
+			//morphologyEx(c_gray, c_gray, MORPH_CLOSE, element);
+			imshow("dst", c_gray);
+			Canny(c_gray, c_gray, g_cannyLowThreshold, g_cannyLowThreshold * 3, 3);
+			findContours(c_gray, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+			vector<vector<Point>>::iterator itContours = contours.begin();
+			for (; itContours != contours.end(); ++itContours) {
+
+				cout << "Size: " << itContours->size() << ends;//æ¯ä¸ªè½®å»“åŒ…å«çš„ç‚¹æ•°
+				/*vector<Point>::iterator it1 = itContours->begin();
+				for (; it1 != (*itContours).end(); ++it1) {
+					cout << "x:" << it1->x<<"y:"<<it1->y << endl;
+				}*/
+
+			}
+			cout << "Contours: " << contours.size() << endl;
+			unsigned int cmin = 200;
+			unsigned int cmax =500;
+			vector<vector<Point>>::iterator itc = contours.begin();
+			while (itc != contours.end())
+			{
+				if ((!isclose(*itc))||itc->size()<cmin || itc->size()>cmax )
+					itc = contours.erase(itc);
+				else
+				{
+					++itc;
+				}
+			}
+			cout << "Contours: " << contours.size() << "  " << ends;
+			cout << endl;
+			////////////////////////////////////////////
+			if (contours.size() > 0){
+				itc = contours.begin();
+				int i = 0;
+				int j = 0;
+				unsigned int max = itc->size();
+				frame.copyTo(framecp);
+				while (itc != contours.end())
+				{
+					Scalar color(40 * i, 255, 30 * i);
+					drawContours(framecp, contours, i, color, 2);
+					if (itc->size() > max){
+						max = itc->size();
+						j = i;
+					}
+					itc++;
+					i++;
+				}
+			
+				RotatedRect rrect = fitEllipse(Mat(contours[j]));
+				cout << "height:" << rrect.size.height << "width:" << rrect.size.width << "area:"<<rrect.size.area()<<endl;
+				if (abs(rrect.center.x - ellisperectmax.center.x)<c_rectr&&abs(rrect.center.y - ellisperectmax.center.y)<c_rectr 
+					&& (rrect.size.height + rrect.size.width)<(ellisperectmax.size.height + ellisperectmax.size.width)
+					&& rrect.size.area()<ellisperectmax.size.area())
+				{
+					
+					ellipse(framecp, rrect, Scalar(rand() & 255, rand() & 255, rand() & 255), 8);
+				}
+				imshow("framecp", framecp);//ç»˜åˆ¶æ¤­åœ†è½®å»“åçš„å›¾åƒ
+			}
+			imshow("f2", frame2_gray);//æ¶ˆé™¤é®æŒ¡åmat
 		}
-
-
-		/*
-				vector<Mat> rgb_planes;
-		Mat frame_hsv;
-		cvtColor(frame, frame_hsv, CV_BGR2HSV_FULL);
-		split(frame_hsv, rgb_planes);
-		/// Éè¶¨binÊıÄ¿
-		int histSize = 255;
-
-		/// Éè¶¨È¡Öµ·¶Î§ ( R,G,B) )
-		float range[] = { 0, 255 };
-		const float* histRange = { range };
-
-		bool uniform = true; bool accumulate = false;
-
-		Mat r_hist, g_hist, b_hist;
-
-		/// ¼ÆËãÖ±·½Í¼:
-		calcHist(&rgb_planes[0], 1, 0, Mat(), r_hist, 1, &histSize, &histRange, uniform, accumulate);
-		calcHist(&rgb_planes[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate);
-		calcHist(&rgb_planes[2], 1, 0, Mat(), b_hist, 1, &histSize, &histRange, uniform, accumulate);
-
-		// ´´½¨Ö±·½Í¼»­²¼
-		int hist_w = 400; int hist_h = 400;
-		int bin_w = cvRound((double)hist_w / histSize);
-
-		Mat histImage(hist_w, hist_h, CV_8UC3, Scalar(0, 0, 0));
-
-		/// ½«Ö±·½Í¼¹éÒ»»¯µ½·¶Î§ [ 0, histImage.rows ]
-		normalize(r_hist, r_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
-		normalize(g_hist, g_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
-		normalize(b_hist, b_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
-
-		/// ÔÚÖ±·½Í¼»­²¼ÉÏ»­³öÖ±·½Í¼
-		for (int i = 1; i < histSize; i++)
-		{
-			line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(r_hist.at<float>(i - 1))),
-				Point(bin_w*(i), hist_h - cvRound(r_hist.at<float>(i))),
-				Scalar(0, 0, 255), 2, 8, 0);
-			line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(g_hist.at<float>(i - 1))),
-				Point(bin_w*(i), hist_h - cvRound(g_hist.at<float>(i))),
-				Scalar(0, 255, 0), 2, 8, 0);
-			line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(b_hist.at<float>(i - 1))),
-				Point(bin_w*(i), hist_h - cvRound(b_hist.at<float>(i))),
-				Scalar(255, 0, 0), 2, 8, 0);
-		}
-
-		/// ÏÔÊ¾Ö±·½Í¼
-		namedWindow("calcHist Demo", CV_WINDOW_AUTOSIZE);
-		imshow("calcHist Demo", histImage);
-		*/
-
-
-		imshow("input", frame);
+		//imshow("input", frame);
 
 		if (cvWaitKey(10) == 27)
 			break;
@@ -228,7 +233,22 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-
+bool isclose(vector<Point> contour){//åˆ¤æ–­è½®å»“æ˜¯å¦è¿ç»­
+	Point firstp;
+	Point endp;
+	firstp = contour[contour.size() / 4*3];
+	endp = contour[contour.size()/4];
+	//æ‰€æœ‰findcontourå‡ºæ¥çš„è½®å»“éƒ½æ˜¯é—­åˆçš„ï¼Œå¦‚æœè½®å»“ä¸ºæ›²çº¿/ç›´çº¿ï¼ˆçœ‹ä¸Šå»ï¼‰ï¼Œåˆ™æ˜¯åŸè·¯è¿”å›
+	//æ‰€ä»¥å–1/4 ä¸3/4çš„ä¸¤ä¸ªç‚¹è¿›è¡Œå¯¹æ¯”ï¼Œå¦‚æœä¸¤ä¸ªç‚¹ä½ç½®ä¸ºåŒä¸€ä¸ªç‚¹åˆ™ï¼Œå¯ä»¥åˆ¤æ–­è¯¥è½®å»“ä¸æ˜¯é—­åˆæ›²çº¿ï¼ˆè§†è§‰ï¼‰
+	if (abs(firstp.x - endp.x) <=50 && abs(firstp.y - endp.y) <= 50)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
 int getarea(Mat img){
 	int i = 0,j=0;
 	int height = img.cols;
@@ -245,13 +265,13 @@ int getarea(Mat img){
 	}
 	return count;
 }
-////////////////////////////////»Ò¶ÈÖ±·½Í¼ÔöÇ¿¶Ô±È¶È///////////////////////////////////////////////////
+////////////////////////////////ç°åº¦ç›´æ–¹å›¾å¢å¼ºå¯¹æ¯”åº¦///////////////////////////////////////////////////
 int ImgStrong(Mat img, Mat result)
 {
 	//***************  
-	//p[]¸÷¸ö»Ò¶È¼¶³öÏÖµÄ¸ÅÂÊ  
-	//p1[]¸÷¸ö»Ò¶È¼¶Ö®Ç°µÄ¸ÅÂÊºÍ  
-	//¸÷¸ö»Ò¶È¼¶³öÏÖµÄ´ÎÊı  
+	//p[]å„ä¸ªç°åº¦çº§å‡ºç°çš„æ¦‚ç‡  
+	//p1[]å„ä¸ªç°åº¦çº§ä¹‹å‰çš„æ¦‚ç‡å’Œ  
+	//å„ä¸ªç°åº¦çº§å‡ºç°çš„æ¬¡æ•°  
 	//*****************  
 	assert((img.cols == result.cols) && (img.rows == result.rows));
 	double p[256], p1[256], num[256];
@@ -261,7 +281,7 @@ int ImgStrong(Mat img, Mat result)
 	memset(p, 0, sizeof(p));
 	memset(p1, 0, sizeof(p1));
 	memset(num, 0, sizeof(num));
-	//¸÷¸ö»Ò¶È¼¶³öÏÖµÄ´ÎÊı  
+	//å„ä¸ªç°åº¦çº§å‡ºç°çš„æ¬¡æ•°  
 	for (int i = 0; i < nheight; i++)
 	{
 		uchar *data = img.ptr<uchar>(i);
@@ -271,12 +291,12 @@ int ImgStrong(Mat img, Mat result)
 		}
 	}
 
-	//¸÷¸ö»Ò¶È¼¶³öÏÖµÄ¸ÅÂÊ  
+	//å„ä¸ªç°åº¦çº§å‡ºç°çš„æ¦‚ç‡  
 	for (int i = 0; i < 256; i++)
 	{
 		p[i] = num[i] / total;
 	}
-	//¸÷¸ö»Ò¶È¼¶Ö®Ç°µÄ¸ÅÂÊºÍ  
+	//å„ä¸ªç°åº¦çº§ä¹‹å‰çš„æ¦‚ç‡å’Œ  
 	for (int i = 0; i < 256; i++)
 	{
 		for (int j = 0; j <= i; j++)
@@ -285,7 +305,7 @@ int ImgStrong(Mat img, Mat result)
 		}
 	}
 
-	//Ö±·½Í¼±ä»»  
+	//ç›´æ–¹å›¾å˜æ¢  
 	for (int i = 0; i < nheight; i++)
 	{
 		uchar *data = img.ptr<uchar>(i);
@@ -298,7 +318,7 @@ int ImgStrong(Mat img, Mat result)
 	return 0;
 }
 
-////////////////////////////otsu·¨ãĞÖµÈ·¶¨///////////////////////////////////////////
+////////////////////////////otsuæ³•é˜ˆå€¼ç¡®å®š///////////////////////////////////////////
 int otsu(cv::Mat&dst){
 
 	int i, j;
@@ -319,7 +339,7 @@ int otsu(cv::Mat&dst){
 
 
 
-	//Í³¼ÆÃ¿¸ö»Ò¶ÈµÄÊıÁ¿
+	//ç»Ÿè®¡æ¯ä¸ªç°åº¦çš„æ•°é‡
 	for (i = 0; i<width; i++){
 		for (j = 0; j<height; j++){
 			tmp = dst.at<uchar>(i, j);
@@ -327,12 +347,12 @@ int otsu(cv::Mat&dst){
 		}
 	}
 
-	//¼ÆËãÃ¿¸ö»Ò¶È¼¶Õ¼Í¼ÏñÖĞµÄ¸ÅÂÊ
+	//è®¡ç®—æ¯ä¸ªç°åº¦çº§å å›¾åƒä¸­çš„æ¦‚ç‡
 	for (i = MIN_GRAY_VALUE; i<MAX_GRAY_VALUE; i++)
 		pro_hst[i] = (double)hst[i] / (double)(width*height);
 
 
-	//¼ÆËãÆ½¾ù»Ò¶ÈÖµ
+	//è®¡ç®—å¹³å‡ç°åº¦å€¼
 	u = 0.0;
 	for (i = MIN_GRAY_VALUE; i<MAX_GRAY_VALUE; i++)
 		u += i*pro_hst[i];
@@ -341,7 +361,7 @@ int otsu(cv::Mat&dst){
 	for (i = MIN_GRAY_VALUE; i< MAX_GRAY_VALUE; i++)
 		det += (i - u)*(i - u)*pro_hst[i];
 
-	//Í³¼ÆÇ°¾°ºÍ±³¾°µÄÆ½¾ù»Ò¶ÈÖµ£¬²¢¼ÆËãÀà¼ä·½²î
+	//ç»Ÿè®¡å‰æ™¯å’ŒèƒŒæ™¯çš„å¹³å‡ç°åº¦å€¼ï¼Œå¹¶è®¡ç®—ç±»é—´æ–¹å·®
 
 	for (i = MIN_GRAY_VALUE; i<MAX_GRAY_VALUE; i++){
 
@@ -360,7 +380,7 @@ int otsu(cv::Mat&dst){
 		u1 = (u - uk) / (1 - w0);
 
 
-		//¼ÆËãÀà¼ä·½²î
+		//è®¡ç®—ç±»é—´æ–¹å·®
 		cov = w0*w1*(u1 - u0)*(u1 - u0);
 
 
@@ -399,7 +419,7 @@ int otsu(cv::Mat&dst, cv::Mat&mask){
 
 
 
-	//Í³¼ÆÃ¿¸ö»Ò¶ÈµÄÊıÁ¿
+	//ç»Ÿè®¡æ¯ä¸ªç°åº¦çš„æ•°é‡
 	for (i = 0; i<width; i++){
 		for (j = 0; j<height; j++){
 			if (mask.at<uchar>(i, j) != 0)
@@ -412,12 +432,12 @@ int otsu(cv::Mat&dst, cv::Mat&mask){
 		}
 	}
 
-	//¼ÆËãÃ¿¸ö»Ò¶È¼¶Õ¼Í¼ÏñÖĞµÄ¸ÅÂÊ
+	//è®¡ç®—æ¯ä¸ªç°åº¦çº§å å›¾åƒä¸­çš„æ¦‚ç‡
 	for (i = MIN_GRAY_VALUE; i<MAX_GRAY_VALUE; i++)
 		pro_hst[i] = (double)hst[i] / (double)(are);
 
 
-	//¼ÆËãÆ½¾ù»Ò¶ÈÖµ
+	//è®¡ç®—å¹³å‡ç°åº¦å€¼
 	u = 0.0;
 	for (i = MIN_GRAY_VALUE; i<MAX_GRAY_VALUE; i++)
 		u += i*pro_hst[i];
@@ -426,7 +446,7 @@ int otsu(cv::Mat&dst, cv::Mat&mask){
 	for (i = MIN_GRAY_VALUE; i< MAX_GRAY_VALUE; i++)
 		det += (i - u)*(i - u)*pro_hst[i];
 
-	//Í³¼ÆÇ°¾°ºÍ±³¾°µÄÆ½¾ù»Ò¶ÈÖµ£¬²¢¼ÆËãÀà¼ä·½²î
+	//ç»Ÿè®¡å‰æ™¯å’ŒèƒŒæ™¯çš„å¹³å‡ç°åº¦å€¼ï¼Œå¹¶è®¡ç®—ç±»é—´æ–¹å·®
 
 	for (i = MIN_GRAY_VALUE; i<MAX_GRAY_VALUE; i++){
 
@@ -445,7 +465,7 @@ int otsu(cv::Mat&dst, cv::Mat&mask){
 		u1 = (u - uk) / (1 - w0);
 
 
-		//¼ÆËãÀà¼ä·½²î
+		//è®¡ç®—ç±»é—´æ–¹å·®
 		cov = w0*w1*(u1 - u0)*(u1 - u0);
 
 

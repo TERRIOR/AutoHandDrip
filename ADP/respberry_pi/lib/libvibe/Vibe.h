@@ -4,10 +4,10 @@
 using namespace cv;
 using namespace std;
 
-#define NUM_SAMPLES 20		//Ã¿¸öÏñËØµãµÄÑù±¾¸öÊı ¸üĞÂ±³¾°ËÙ¶È£¨²»È·¶¨£©   20
-#define MIN_MATCHES 2		//#minÖ¸Êı                            2
-#define RADIUS 10	//Sqthere°ë¾¶  Ô½´ó ·´Ó¦Ô½Ğ¡                  20
-#define SUBSAMPLE_FACTOR 16	//×Ó²ÉÑù¸ÅÂÊ                          16
+#define NUM_SAMPLES 20		//æ¯ä¸ªåƒç´ ç‚¹çš„æ ·æœ¬ä¸ªæ•° æ›´æ–°èƒŒæ™¯é€Ÿåº¦ï¼ˆä¸ç¡®å®šï¼‰   20
+#define MIN_MATCHES 2		//#minæŒ‡æ•°                            2
+#define RADIUS 10	//SqthereåŠå¾„  è¶Šå¤§ ååº”è¶Šå°                  20
+#define SUBSAMPLE_FACTOR 16	//å­é‡‡æ ·æ¦‚ç‡                          16
 
 
 class ViBe_BGS
@@ -16,15 +16,15 @@ public:
 	ViBe_BGS(void);
 	~ViBe_BGS(void);
 
-	void init(const Mat _image);   //³õÊ¼»¯
+	void init(const Mat _image);   //åˆå§‹åŒ–
 	void processFirstFrame(const Mat _image);
-	void testAndUpdate(const Mat _image);  //¸üĞÂ
+	void testAndUpdate(const Mat _image);  //æ›´æ–°
 	Mat getMask(void){ return m_mask; };
 	void deleteSamples(){ delete samples; };
 
 private:
 	unsigned char ***samples;
-	//	float samples[1024][1024][NUM_SAMPLES+1];//±£´æÃ¿¸öÏñËØµãµÄÑù±¾Öµ
+	//	float samples[1024][1024][NUM_SAMPLES+1];//ä¿å­˜æ¯ä¸ªåƒç´ ç‚¹çš„æ ·æœ¬å€¼
 
 	/*
 	Mat m_samples[NUM_SAMPLES];

@@ -3,22 +3,22 @@
 using namespace std;
 using namespace cv;
 
-int c_xoff[9] = { -1, 0, 1, -1, 1, -1, 0, 1, 0 };  //xµÄÁÚ¾Óµã
-int c_yoff[9] = { -1, 0, 1, -1, 1, -1, 0, 1, 0 };  //yµÄÁÚ¾Óµã
+int c_xoff[9] = { -1, 0, 1, -1, 1, -1, 0, 1, 0 };  //xçš„é‚»å±…ç‚¹
+int c_yoff[9] = { -1, 0, 1, -1, 1, -1, 0, 1, 0 };  //yçš„é‚»å±…ç‚¹
 
 ViBe_BGS::ViBe_BGS(void)
 {
-
+	
 }
 ViBe_BGS::~ViBe_BGS(void)
 {
-
+	
 }
 
 /**************** Assign space and init ***************************/
 void ViBe_BGS::init(const Mat _image)
 {
-	//¶¯Ì¬·ÖÅäÈıÎ¬Êı×é£¬samples[][][NUM_SAMPLES]´æ´¢Ç°¾°±»Á¬Ğø¼ì²âµÄ´ÎÊı
+	//åŠ¨æ€åˆ†é…ä¸‰ç»´æ•°ç»„ï¼Œsamples[][][NUM_SAMPLES]å­˜å‚¨å‰æ™¯è¢«è¿ç»­æ£€æµ‹çš„æ¬¡æ•°
 	samples = new unsigned char **[_image.rows];
 	for (int i = 0; i<_image.rows; i++)
 	{
@@ -49,7 +49,7 @@ void ViBe_BGS::processFirstFrame(const Mat _image)
 		{
 			for (int k = 0; k < NUM_SAMPLES; k++)
 			{
-				// Random pick up NUM_SAMPLES pixel in neighbourhood to construct the model   Ëæ»úÔÚËÄÖÜÑ¡È¡NUM_SAMPLES¸öÏñËØÈ¥¹¹½¨Ä£ĞÍ
+				// Random pick up NUM_SAMPLES pixel in neighbourhood to construct the model   éšæœºåœ¨å››å‘¨é€‰å–NUM_SAMPLESä¸ªåƒç´ å»æ„å»ºæ¨¡å‹
 				int random = rng.uniform(0, 9);
 
 				row = i + c_yoff[random];
@@ -85,12 +85,12 @@ void ViBe_BGS::testAndUpdate(const Mat _image)
 			while (matches < MIN_MATCHES && count < NUM_SAMPLES)
 			{
 				dist = abs(samples[i][j][count] - _image.at<uchar>(i, j));
-				if (dist < RADIUS)//²îÖµĞ¡ÓÚRADIUS ¾Í¼ÓÒ»£¿Ô½´óÔ½ÈİÒ×¼ÓÒ»  ÔòÔ½ÈİÒ××÷Îª±³¾°
+				if (dist < RADIUS)//å·®å€¼å°äºRADIUS å°±åŠ ä¸€ï¼Ÿè¶Šå¤§è¶Šå®¹æ˜“åŠ ä¸€  åˆ™è¶Šå®¹æ˜“ä½œä¸ºèƒŒæ™¯
 				matches++;
 				count++;
 			}
-			//Èç¹û ÊÇÒòÎªmatches >MIN_MATCHES¶øÍË³öÑ­»·£¬ÔòÏÂÃæ¾ÍÒªÖ´ĞĞ   ×÷Îª±³¾° // Èç¹ûÓÉÓÚËùÓĞ²ÉÑùÖµ±éÀúÍê¶øÍË³öµÄ¾Í²»ĞèÒªÖ´ĞĞ  ×÷ÎªÇ°¾°
-			//Òò´ËMIN_MATCHESÔ½´ó Ô½ÄÑ×÷Îª±³¾°
+			//å¦‚æœ æ˜¯å› ä¸ºmatches >MIN_MATCHESè€Œé€€å‡ºå¾ªç¯ï¼Œåˆ™ä¸‹é¢å°±è¦æ‰§è¡Œ   ä½œä¸ºèƒŒæ™¯ // å¦‚æœç”±äºæ‰€æœ‰é‡‡æ ·å€¼éå†å®Œè€Œé€€å‡ºçš„å°±ä¸éœ€è¦æ‰§è¡Œ  ä½œä¸ºå‰æ™¯
+			//å› æ­¤MIN_MATCHESè¶Šå¤§ è¶Šéš¾ä½œä¸ºèƒŒæ™¯
 			if (matches >= MIN_MATCHES)
 			{
 				// It is a background pixel
@@ -99,7 +99,7 @@ void ViBe_BGS::testAndUpdate(const Mat _image)
 				// Set background pixel to 0
 				m_mask.at<uchar>(i, j) = 0;
 
-				// Èç¹ûÒ»¸öÏñËØÊÇ±³¾°µã£¬ÄÇÃ´ËüÓĞ 1 / defaultSubsamplingFactor µÄ¸ÅÂÊÈ¥¸üĞÂ×Ô¼ºµÄÄ£ĞÍÑù±¾Öµ
+				// å¦‚æœä¸€ä¸ªåƒç´ æ˜¯èƒŒæ™¯ç‚¹ï¼Œé‚£ä¹ˆå®ƒæœ‰ 1 / defaultSubsamplingFactor çš„æ¦‚ç‡å»æ›´æ–°è‡ªå·±çš„æ¨¡å‹æ ·æœ¬å€¼
 				int random = rng.uniform(0, SUBSAMPLE_FACTOR);
 				if (random == 0)
 				{
@@ -107,7 +107,7 @@ void ViBe_BGS::testAndUpdate(const Mat _image)
 					samples[i][j][random] = _image.at<uchar>(i, j);
 				}
 
-				// Í¬Ê±Ò²ÓĞ 1 / defaultSubsamplingFactor µÄ¸ÅÂÊÈ¥¸üĞÂËüµÄÁÚ¾ÓµãµÄÄ£ĞÍÑù±¾Öµ
+				// åŒæ—¶ä¹Ÿæœ‰ 1 / defaultSubsamplingFactor çš„æ¦‚ç‡å»æ›´æ–°å®ƒçš„é‚»å±…ç‚¹çš„æ¨¡å‹æ ·æœ¬å€¼
 				random = rng.uniform(0, SUBSAMPLE_FACTOR);
 				if (random == 0)
 				{
@@ -138,8 +138,8 @@ void ViBe_BGS::testAndUpdate(const Mat _image)
 				// Set background pixel to 255
 				m_mask.at<uchar>(i, j) = 255;
 
-				//Èç¹ûÄ³¸öÏñËØµãÁ¬ĞøN´Î±»¼ì²âÎªÇ°¾°£¬ÔòÈÏÎªÒ»¿é¾²Ö¹ÇøÓò±»ÎóÅĞÎªÔË¶¯£¬½«Æä¸üĞÂÎª±³¾°µã
-				if (samples[i][j][NUM_SAMPLES]>40)
+				//å¦‚æœæŸä¸ªåƒç´ ç‚¹è¿ç»­Næ¬¡è¢«æ£€æµ‹ä¸ºå‰æ™¯ï¼Œåˆ™è®¤ä¸ºä¸€å—é™æ­¢åŒºåŸŸè¢«è¯¯åˆ¤ä¸ºè¿åŠ¨ï¼Œå°†å…¶æ›´æ–°ä¸ºèƒŒæ™¯ç‚¹
+				if (samples[i][j][NUM_SAMPLES]>30)
 				{
 					int random = rng.uniform(0, NUM_SAMPLES);
 					if (random == 0)

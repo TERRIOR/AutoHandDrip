@@ -1,4 +1,8 @@
 #include "Vibe.h"
+#include "opencv2/core/core.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/video/background_segm.hpp"
+#include "opencv2/highgui/highgui.hpp"
 #include <cstdio>
 
 using namespace cv;
@@ -14,12 +18,12 @@ bool isclose(vector<Point> contour);
 bool comp(const vector<Point> &a, const  vector<Point> &b);
 int main(int argc, char* argv[])
 {
-	Mat frame, gray, mask ,f1;
+	Mat frame, gray, mask,f1 ;
 	VideoCapture capture;
 	RotatedRect ellisperectmax,rrect;
-	capture.set(CV_CAP_PROP_FRAME_WIDTH, 320);
-	capture.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
-	capture.open("3.avi");
+	//capture.set(CV_CAP_PROP_FRAME_WIDTH, 320);
+	//capture.set(CV_CAP_PROP_FRAME_HEIGHT, 240);
+	capture.open("4.avi");
 	if (!capture.isOpened())
 	{
 		cout << "No camera or video input!\n" << endl;
@@ -28,80 +32,97 @@ int main(int argc, char* argv[])
 
 	ViBe_BGS Vibe_Bgs;
 	bool count = true;
-	capture >> f1;
-	capture >> frame;
-	////////////////////////////////取出最外层的滤杯圈//////////////////////////////
 	Mat frame_gray,framecp;
 	Mat cmask;
 	Rect re;
 	int c_size_max,c_size_min;
 	Mat lastmask,lastmask2;
-	frame.copyTo(framecp);
-	cvtColor(frame, frame_gray, CV_RGB2GRAY);
-	GaussianBlur(frame_gray, frame_gray, Size(35, 35), 0, 0);//高斯必须为奇数
-	threshold(frame_gray, frame_gray, 0, 255, THRESH_BINARY | THRESH_OTSU);
-	Mat element = getStructuringElement(MORPH_ELLIPSE, Size(12, 12));
-	//进行形态学操作  
-	morphologyEx(frame_gray, frame_gray, MORPH_OPEN, element);
-	Canny(frame_gray, frame_gray, g_cannyLowThreshold, g_cannyLowThreshold * 3, 3);
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
-	findContours(frame_gray, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-	//////////////////////////////////////////////////////
-	unsigned int cmin = 200;
-	unsigned int cmax = 2000;
-	vector<vector<Point> >::iterator itc = contours.begin();
-	while (itc != contours.end())
+
+	while (true)
 	{
-		if ((!isclose(*itc)) || itc->size()<cmin || itc->size()>cmax)
-			itc = contours.erase(itc);
-		else
-		{
-			++itc;
-			
-		}
 		
-	}
-	//cout << "Contours: " << contours.size() << "  " << ends;
-	//cout << endl;
-	if (contours.size() > 0){
-		itc = contours.begin();
-		int i = 0;
+		capture >> frame;
+		////////////////////////////////取出最外层的滤杯圈//////////////////////////////
+		frame.copyTo(f1);
+		frame.copyTo(framecp);
+		cvtColor(frame, frame_gray, CV_RGB2GRAY);
+		GaussianBlur(frame_gray, frame_gray, Size(35, 35), 0, 0);//高斯必须为奇数
+		threshold(frame_gray, frame_gray, 0, 255, THRESH_BINARY | THRESH_OTSU);
+		Mat element = getStructuringElement(MORPH_ELLIPSE, Size(12, 12));
+		//进行形态学操作  
+		morphologyEx(frame_gray, frame_gray, MORPH_OPEN, element);
+		Canny(frame_gray, frame_gray, g_cannyLowThreshold, g_cannyLowThreshold * 3, 3);
+		
+		
+		findContours(frame_gray, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+		//////////////////////////////////////////////////////
+		cout << "Contours: " << contours.size() << "  " << ends;
+		unsigned int cmin = 200;
+		unsigned int cmax = 2000;
+		vector<vector<Point> >::iterator itc = contours.begin();
 		while (itc != contours.end())
 		{
-			Scalar color(40 * i, 255, 30 * i);
-			drawContours(framecp, contours, i, color, 2);
-			itc++;
-			i++;
+			if ((!isclose(*itc)) || itc->size()<cmin || itc->size()>cmax)
+				itc = contours.erase(itc);
+			else
+			{
+				++itc;
+			
+			}
+		
 		}
-		sort(contours.begin(), contours.end(), comp);//对轮廓进行排序
-		c_size_max = contours[0].size();//取出最大轮廓
-		c_size_min = contours[1].size();//取出第二大的轮廓
-		ellisperectmax = fitEllipse(Mat(contours[0]));
-		RotatedRect ellispemin = fitEllipse(Mat(contours[1]));
-		cout << "height:" << ellisperectmax.size.height << "width:" << ellisperectmax.size.width << "area:" << ellisperectmax.size.area() << endl;
-		re = boundingRect(contours[0]);//roi感兴趣区域，其他去除
-		ellipse(framecp, ellisperectmax, Scalar(rand() & 255, rand() & 255, rand() & 255), 8);
-		imshow("framecp", framecp);
-		cmask = Mat::zeros(frame.size(), CV_8UC1);
-		lastmask=Mat::zeros(frame.size(), CV_8UC1);
-		lastmask2 = Mat::zeros(frame.size(), CV_8UC1);
-		cmask.setTo(0);
-		lastmask.setTo(255);
-		lastmask2.setTo(255);
-		ellipse(cmask, ellisperectmax, Scalar(255), -1);
-		ellipse(lastmask, RotatedRect(ellispemin.center, Size(ellispemin.size.width - 100, ellispemin.size.height -100), ellispemin.angle), Scalar(0), -1);
-		ellipse(lastmask2, RotatedRect(ellispemin.center, Size(ellispemin.size.width +100, ellispemin.size.height + 100), ellispemin.angle), Scalar(0), -1);
-		cmask = cmask(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
-		lastmask = lastmask(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
-		lastmask2 = lastmask2(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
-		ellisperectmax.center.x = ellisperectmax.center.x - re.x-15;//消除切除后圆心的偏移
-		ellisperectmax.center.y = ellisperectmax.center.y - re.y-15;//同上
-		//Mat cmask2 = Mat::zeros(frame.size(), CV_8UC1);
-		//circle(cmask2, c_point, c_rectr, Scalar(255));
-		//imshow("ellipse", cmask);
-		//imshow("ellipse2", lastmask);
+		cout << "Contours: " << contours.size() << "  " << ends;
+		cout << endl;
+		if (contours.size() > 1){
+			itc = contours.begin();
+			int i = 0;
+			while (itc != contours.end())
+			{
+				Scalar color(40 * i, 255, 30 * i);
+				drawContours(framecp, contours, i, color, 2);
+				itc++;
+				i++;
+			}
+			sort(contours.begin(), contours.end(), comp);//对轮廓进行排序
+			c_size_max = contours[0].size();//取出最大轮廓
+
+		
+			ellisperectmax = fitEllipse(Mat(contours[0]));
+		
+			cout << "height:" << ellisperectmax.size.height << "width:" << ellisperectmax.size.width << "area:" << ellisperectmax.size.area() << endl;
+			re = boundingRect(contours[0]);//roi感兴趣区域，其他去除
+			ellipse(framecp, ellisperectmax, Scalar(rand() & 255, rand() & 255, rand() & 255), 8);
+			//imshow("framecp1", framecp);
+			cmask = Mat::zeros(frame.size(), CV_8UC1);
+			
+			cmask.setTo(0);
+			
+			ellipse(cmask, ellisperectmax, Scalar(255), -1);
+			cmask = cmask(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
+			ellisperectmax.center.x = ellisperectmax.center.x - re.x-15;//消除切除后圆心的偏移
+			ellisperectmax.center.y = ellisperectmax.center.y - re.y-15;//同上
+			
+			c_size_min = contours[2].size();//取出第二大的轮廓 因为是双层 所以取第三个
+			RotatedRect ellispemin = fitEllipse(Mat(contours[2]));
+			lastmask=Mat::zeros(frame.size(), CV_8UC1);
+			lastmask2 = Mat::zeros(frame.size(), CV_8UC1);
+			lastmask.setTo(255);
+			lastmask2.setTo(255);
+			ellipse(lastmask, RotatedRect(ellispemin.center, Size(ellispemin.size.width - 100, ellispemin.size.height - 100), ellispemin.angle), Scalar(0), -1);
+			ellipse(lastmask2, RotatedRect(ellispemin.center, Size(ellispemin.size.width + 100, ellispemin.size.height + 100), ellispemin.angle), Scalar(0), -1);
+			lastmask = lastmask(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
+			lastmask2 = lastmask2(Rect(re.x + 15, re.y + 15, re.size().width - 30, re.size().height - 30));
+			//imshow("ellipse1", lastmask);
+			//imshow("ellipse2", lastmask2);
+			break;
+			//Mat cmask2 = Mat::zeros(frame.size(), CV_8UC1);
+			//circle(cmask2, c_point, c_rectr, Scalar(255));
+		}
 	}
+	//BackgroundSubtractorMOG2 bg_model(20,10,false);//(100, 3, 0.3, 5); MOG算法
+
 	while (1)
 	{
 		capture >> frame;
@@ -109,6 +130,7 @@ int main(int argc, char* argv[])
 			continue;
 		frame = frame( Rect(re.x+15,re.y+15,re.size().width-30,re.size().height-30));//只取出中心部分，其余不要，可减少遍历时运算，加快速度
 		cvtColor(frame, gray, CV_RGB2GRAY);
+		
 		if (count)
 		{
 			
@@ -120,30 +142,43 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
+			if (mask.empty())
+				mask.create(frame.size(), frame.type());
+			mask = Scalar::all(0);
+			//bg_model(frame, mask, true ? 0.005 : 0);// 0.005背景更新速度  选择  
 			Vibe_Bgs.testAndUpdate(gray);
 			mask = Vibe_Bgs.getMask();
 			
-			Mat element = getStructuringElement(MORPH_ELLIPSE, Size(15,15));
-			morphologyEx(mask, mask, MORPH_OPEN, element);
+			Mat element = getStructuringElement(MORPH_ELLIPSE, Size(5,5));
+			morphologyEx(mask, mask, MORPH_CLOSE, element);//闭运算 让运动区域变大
+			imshow("move", mask);
+		
+			Mat move;
+			frame.copyTo(move,mask);
 			
+			GaussianBlur(move, move, Size(5, 5), 0, 0);
+			cvtColor(move, move, CV_BGR2HSV);
+			
+			vector<Mat> colorspirt;
+			split(move, colorspirt);
+			//Mat move2;
+			inRange(colorspirt[0], 75, 140, mask);
+			
+			morphologyEx(mask, mask, MORPH_OPEN, element);
 			int mask_area = countNonZero(mask);//这里的mask需要改成只有注水杆区域（目前还包括粉层的扩散）
 			//mask_area=getarea(mask);
 			cout << "area:"<<mask_area<< endl;
-
-			if (mask_area<1000)
+			if (mask_area<1000)//更新背景
 			{
 				frame.copyTo(f1);
 				cout << "f1update"<< endl;
 			}
-			//imshow("f1", f1);
-			//imshow("mask", mask);
+			imshow("f1", f1);
+			imshow("mask", mask);
+
 			Mat frame2(Scalar(255));
 			frame2.setTo(255);
 			Mat frame_gs;
-			//Mat frame3;
-			//frame.copyTo(frame3, mask);
-			//imshow("frame3", frame3);
-			
 			/*vibe运动算法去除注水区域（暂时不用）
 			f1.copyTo(frame2, mask);
 			mask = 255 - mask;//mask取反 此时mask为没运动区域
@@ -155,15 +190,25 @@ int main(int argc, char* argv[])
 			morphologyEx(frame2_gray, frame2_gray, MORPH_OPEN, element);
 			imshow("f2", frame2_gray);//消除遮挡后mat
 			*/
-		
+			//bg_model.getBackgroundImage(f1);
+			f1.copyTo(frame2, mask);
+			mask = 255 - mask;//mask取反 此时mask为没运动区域
+			frame.copyTo(frame2, mask);
+			Mat frame2_gray;
+			cvtColor(frame2, frame2_gray, CV_RGB2GRAY);
+			GaussianBlur(frame2_gray, frame2_gray, Size(21, 21), 0, 0);
+			//element = getStructuringElement(MORPH_ELLIPSE, Size(20, 20));
+			//morphologyEx(frame2_gray, frame2_gray, MORPH_OPEN, element);
+			imshow("f2", frame2_gray);//消除遮挡后mat
 			
+
 			Mat dst1;
-			GaussianBlur(gray, gray, Size(21, 21), 0, 0);
+			//GaussianBlur(gray, gray, Size(21, 21), 0, 0);
 			//morphologyEx(gray, gray, MORPH_CLOSE, element);
 			//mask = cmask&mask&lastmask;//此时mask为椭圆内没运动区域
 			//imshow("ellispe", mask);
-			int a = otsu(gray, cmask);//只对cmask二值化（避免四个角剩余的蓝黑色部分影响）
-			frame_gs = gray > a;
+			int a = otsu(frame2_gray, cmask);//只对cmask二值化（避免四个角剩余的蓝黑色部分影响） frame2_gray是用来vibe算法去除注水杆效果
+			frame_gs = frame2_gray > a;
 			Mat c_gray;
 			frame_gs.copyTo(c_gray, cmask);
 			c_gray = (c_gray&lastmask)|lastmask2;//lastmask与lastmask2限制了粉圈范围，粉圈的二值化图黑圈大于lastmask，小于lastmask2
@@ -179,8 +224,17 @@ int main(int argc, char* argv[])
 				cout << "Size: " << itContours->size() << ends;//每个轮廓包含的点数
 			}
 			cout << "Contours: " << contours.size() << c_size_min << endl;
-			unsigned int cmin = c_size_min-100;//把上次检测的结果作为下次检测的筛选条件
-			unsigned int cmax =c_size_min+50;//
+			unsigned int cmin,cmax;
+			if (c_size_min == 0){
+				cmin = 100;
+				cmax = 2000;
+			}
+			else
+			{
+				cmin = c_size_min-100;//把上次检测的结果作为下次检测的筛选条件
+				cmax =c_size_min+50;//
+			}
+			
 			vector<vector<Point> >::iterator itc = contours.begin();
 			while (itc != contours.end())
 			{
@@ -222,8 +276,8 @@ int main(int argc, char* argv[])
 					ellipse(framecp, rrect, Scalar(rand() & 255, rand() & 255, rand() & 255), 8);
 					lastmask.setTo(255);
 					lastmask2.setTo(255);
-					//以这次检测出的圆去限制（补全&去除）下一个圆   范围：-10~30（待调整）
-					ellipse(lastmask2, RotatedRect(rrect.center, Size(rrect.size.width +30, rrect.size.height +30), rrect.angle), Scalar(0), -1);
+					//以这次检测出的圆去限制（补全&去除）下一个圆   范围：-10~20（待调整）
+					ellipse(lastmask2, RotatedRect(rrect.center, Size(rrect.size.width +20, rrect.size.height +20), rrect.angle), Scalar(0), -1);
 					ellipse(lastmask, RotatedRect(rrect.center, Size(rrect.size.width - 10, rrect.size.height - 10), rrect.angle), Scalar(0), -1);
 					Rect re = boundingRect(Mat(contours[j]));//roi感兴趣区域，其他去除
 					//int a = otsu(gray);

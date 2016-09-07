@@ -51,9 +51,8 @@ void loop() {
   myservo2.write(ang.angle2);
   myservo3.write(ang.angle3);
   //滤波去除误差，并输入温度
-  filter(ts.getCelsius(),error,&Input);
-  //滤波加平均值去除误差
-  //average_filter(ts.getCelsius(),error,&Input);
+
+  average_filter(ts.getCelsius(),&Input);
   
   myPID.Compute();//计算是否需要重新计算
  

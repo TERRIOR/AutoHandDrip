@@ -2,14 +2,16 @@
 #define PID_v1_h
 #define LIBRARY_VERSION        1.0.0
  extern float lasttemp;
+ //extern int over_cnt;
+ //extern float filter_sum;;
 /*不需要其他文件看到
   extern int TFILTER_N;
   extern float Buffer[3];
 */
 
 
-void filter(float c,int error,double *input);
-void average_filter(float c,int error,double *input);
+//void filter(float c,int error,double *input);
+void average_filter(float c,double *input);
 
 
 

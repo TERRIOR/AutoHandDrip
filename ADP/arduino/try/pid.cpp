@@ -13,8 +13,10 @@
 #include "pid.h"
 //自己修改部分
 float lasttemp;
-int TFILTER_N=3;
-float Buffer[3];
+ float filter_sum;
+ int over_cnt;
+ int TFILTER_N=6;
+ float Buffer[6];
  
 /*Constructor (...)*********************************************************                                构造函数
  *    The parameters specified here are those for for which we can't set up                                 这里指定的参数是那些我们不能建立可靠的预设值，
@@ -206,46 +208,31 @@ void PID::SetControllerDirection(int Direction)
    controllerDirection = Direction;
 }
 //滤波去除误差
-void filter(float c,int error,double *input){
-  double temp = c;
-       if (temp-lasttemp<error){
-           if (temp-lasttemp>-error){
-            *input=temp;
-            lasttemp = temp; 
-           }
-           else *input = temp;
-        }
-        else *input = temp; 
-  }
-
-  //滤波加平均值去除误差
-  void average_filter(float c,int error,double *input){
-       double temp = c;
-       int i;
-        float  filter_sum ; 
-         if (temp-lasttemp<error){
-           if (temp-lasttemp>-error){
-            Buffer[TFILTER_N - 1] = lasttemp;
-           }
-           else {
-            Buffer[TFILTER_N - 1] = temp;
-            lasttemp = temp;
-           }
-        }
-        else {
-          Buffer[TFILTER_N - 1] = temp;
-          lasttemp = temp; 
-        }
-        
-        for(i = 0; i < TFILTER_N - 1; i++) {
-          Buffer[i] =Buffer[i + 1];
-          filter_sum += Buffer[i]; 
+void average_filter(float c,double *input){
+    int i;
+    int error = 3;
+    float temp;
+      temp = c;
+      Buffer[TFILTER_N - 1] = temp;
+  if(((Buffer[TFILTER_N - 1] - Buffer[TFILTER_N - 2]) > error) || ((Buffer[TFILTER_N - 2] - Buffer[TFILTER_N - 1]) > error)||(Buffer[TFILTER_N - 1]<10))
+    {//超出范围
+      Buffer[TFILTER_N - 1] = Buffer[TFILTER_N - 2];//当作误差舍弃
+      over_cnt++;//每次超出范围就加一
+      if(over_cnt>=6){
+        Buffer[TFILTER_N - 1] = temp;//当四次都超出范围后，重新更新buffer[TFILTER_N - 1],把当前温度作为有效值
+        over_cnt=0;//计数器清0
+      }
+    }
+    else {
+      over_cnt=0;//计数器清0
+    }
+    for(i = 0; i < TFILTER_N - 1; i++) {
+    Buffer[i] =Buffer[i + 1];
+    filter_sum += Buffer[i]; 
   }
     //tp->buffer[TFILTER_N - 2]=filter_sum / (TFILTER_N - 1);
-    temp= filter_sum / (TFILTER_N - 1);
-    *input = temp;
+    *input= filter_sum / (TFILTER_N - 1);
 }
-
  
 /* Status Funcions*************************************************************
  * Just because you set the Kp=-1 doesn't mean it actually happened.  these

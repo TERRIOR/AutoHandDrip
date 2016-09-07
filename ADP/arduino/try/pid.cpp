@@ -15,8 +15,8 @@
 float lasttemp;
  float filter_sum;
  int over_cnt;
- int TFILTER_N=6;
- float Buffer[6];
+ int TFILTER_N=4;
+ float Buffer[4];
  
 /*Constructor (...)*********************************************************                                构造函数
  *    The parameters specified here are those for for which we can't set up                                 这里指定的参数是那些我们不能建立可靠的预设值，
@@ -232,6 +232,7 @@ void average_filter(float c,double *input){
   }
     //tp->buffer[TFILTER_N - 2]=filter_sum / (TFILTER_N - 1);
     *input= filter_sum / (TFILTER_N - 1);
+    filter_sum = 0;//filter_sum清零
 }
  
 /* Status Funcions*************************************************************

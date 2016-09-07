@@ -19,9 +19,9 @@ void receive();
 void setup() {
   Serial.begin(9600);
   //机械手部分的初始化
-  myservo1.attach(9);
-  myservo2.attach(10);
-  myservo3.attach(11);
+  myservo1.attach(4);
+  myservo2.attach(5);
+  myservo3.attach(6);
   delay(20);
   myservo1.write(0);
   myservo2.write(0);
@@ -53,6 +53,8 @@ void loop() {
   //滤波去除误差，并输入温度
 
   average_filter(ts.getCelsius(),&Input);
+  Serial.print(Input);
+  Serial.print(",");
   
   myPID.Compute();//计算是否需要重新计算
  
@@ -67,7 +69,7 @@ void loop() {
   else digitalWrite(RelayPin,LOW);
   if (ts.getCelsius())
   Serial.println(ts.getCelsius(), 2);
-  Serial.print(" C / ");
+ // Serial.println(" C / ");
 
   delay(300);
 

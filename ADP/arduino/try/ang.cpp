@@ -42,9 +42,9 @@ void xyztoangle(float x,float y,float z,angle *a){
   p1.z=z;
   changeangle(&p1,&p2);
   changeangle(&p2,&p3);
-  Serial.println(p1.x);
+  /*Serial.println(p1.x);
   Serial.println(p1.y);
-  Serial.println(p1.z);
+  Serial.println(p1.z);*/
   a->angle1=Angle(p1.x,p1.y,p1.z);
   a->angle2=Angle(p2.x,p2.y,p2.z);
   a->angle3=Angle(p3.x,p3.y,p3.z);

@@ -18,6 +18,7 @@ int x_max=100,y_max=100,z_max=100;
 void receive();
 void setup() {
   Serial.begin(9600);
+  Serial1.begin(9600);
   //机械手部分的初始化
   myservo1.attach(4);
   myservo2.attach(5);
@@ -44,17 +45,18 @@ void loop() {
   //接收信号,并处理
   receive();
   xyztoangle(x, y, z, &ang);
-  //Serial.println(ang.angle1);
-  //Serial.println(ang.angle2);
-  //Serial.println(ang.angle3);
+ // Serial1.write((int)ang.angle1);
+  Serial.println(ang.angle1);
+  Serial.println(ang.angle2);
+  Serial.println(ang.angle3);
   myservo1.write(ang.angle1);
   myservo2.write(ang.angle2);
   myservo3.write(ang.angle3);
   //滤波去除误差，并输入温度
 
   average_filter(ts.getCelsius(),&Input);
-  Serial.print(Input);
-  Serial.print(",");
+ // Serial.print(Input);
+ // Serial.print(",");
   
   myPID.Compute();//计算是否需要重新计算
  
@@ -68,7 +70,7 @@ void loop() {
   if(Output < millis() - windowStartTime) digitalWrite(RelayPin,HIGH);
   else digitalWrite(RelayPin,LOW);
   if (ts.getCelsius())
-  Serial.println(ts.getCelsius(), 2);
+  //Serial.println(ts.getCelsius(), 2);
  // Serial.println(" C / ");
 
   delay(300);
@@ -77,9 +79,9 @@ void loop() {
     
 }
 void receive(){
-  while (Serial.available() > 0)  
+  while (Serial1.available() > 0)  
   {
-    comdata += char(Serial.read());
+    comdata += char(Serial1.read());
     delay(2);//为了防止数据丢失,在此设置短暂延时delay(2)
   }
     //将信号转化为1脚的坐标

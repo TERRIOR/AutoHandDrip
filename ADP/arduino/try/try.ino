@@ -20,6 +20,7 @@ char com;
 angle ang={0,0,0};//写默认的角度 暂时先写0,0,0
 //int x_max=100,y_max=100,z_max=100;
 void sreceive();
+void movetop();
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
@@ -42,6 +43,7 @@ void setup() {
   //开启PID
   myPID.SetMode(AUTOMATIC);
   lasttemp = ts.getCelsius();
+  t.every(100, movetop);
 }
 
 void loop() {  
@@ -66,6 +68,7 @@ void loop() {
 
   delay(300);  
 }
+void movetop(){
   sreceive();
   xyztoangle(x, h, y, &ang);
   if(isdrip){
@@ -105,6 +108,7 @@ void sreceive(){
             hindex=comdata.indexOf('h',0);
             //if comdata contain the 'h' get the h 
             if(hindex!=-1){
+              h=comdata.substring(hindex+1).toInt()-100;//h 坐标偏移100 客户端初始50 即-50
               y=comdata.substring(yindex+1,hindex).toInt();
             }else {
               y=comdata.substring(yindex+1).toInt();

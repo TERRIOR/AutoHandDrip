@@ -3,7 +3,7 @@
 
 //extern const float shin,thigh,baseside,effectorside;
 //extern const double leg;
-extern float x,y,z;
+extern int x,y,z;
 typedef struct ANGLE angle;
 struct ANGLE{
 float angle1;
@@ -12,7 +12,7 @@ float angle3;
 };
 
 float Angle(float x,float y,float z);
-void xyztoangle(float x,float y,float z,angle* a);
+void xyztoangle(int x,int y,int z,angle* a);
 
 
 

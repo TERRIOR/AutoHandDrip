@@ -14,7 +14,7 @@ unsigned long windowStartTime;
 Servo myservo1,myservo2,myservo3;  
 String comdata = "";
 angle ang={0,0,0};//写默认的角度 暂时先写0,0,0
-float x_max=100,y_max=100,z_max=100;
+int x_max=100,y_max=100,z_max=100;
 void receive();
 void setup() {
   Serial.begin(9600);
@@ -92,21 +92,21 @@ void receive(){
      case 'x':
        a=comdata.substring(1);
        b=a.toInt();//在此把comdata转化成INT型数值,以备后续使用
-       c=(float) b;
+       c=b;
        if(c>x_max) c=x_max;
        x=c;
      break;
      case 'y':
        a=comdata.substring(1);
        b=a.toInt();
-       c=(float) b;
+       c= b;
        if(c>y_max) c=y_max;
        y=c;
      break;
      case 'z':
        a=comdata.substring(1);
        b=a.toInt();
-       c=(float) b;
+       c= b;
        if(c>z_max) c=z_max;
        z=c;
      break;

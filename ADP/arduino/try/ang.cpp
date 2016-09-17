@@ -4,7 +4,7 @@
 #include "ang.h"
 const double leg = 6.28*120/360;
 const float shin=30,thigh=40,baseside=0,effectorside=0;
-float x,y,z;
+int x,y,z;
 struct posi{
   float x;
   float y;
@@ -34,7 +34,7 @@ float Angle(float x,float y,float z){
  return angle;
 }
 
-void xyztoangle(float x,float y,float z,angle *a){
+void xyztoangle(int x,int y,int z,angle *a){
   posi p2,p3;
   posi p1;
   p1.x=x;

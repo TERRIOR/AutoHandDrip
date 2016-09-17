@@ -3,8 +3,9 @@
 #include <Arduino.h>
 #include "ang.h"
 const double leg = 6.28*120/360;
-const float shin=30,thigh=40,baseside=0,effectorside=0;
-int x,y,z;
+const float shin=50,thigh=110,basesize=35,effectorsize=22;
+bool isdrip=false;
+int x,y,h;
 struct posi{
   float x;
   float y;
@@ -25,7 +26,7 @@ void changeangle(posi* posi_1,posi* posi_2){
 }
 //计算坐标  
 float Angle(float x,float y,float z){
- float c=sqrt((x+effectorside-baseside)*(x+effectorside-baseside)+y*y+(z+effectorside-baseside)*(z+effectorside-baseside));
+ float c=sqrt((x+effectorsize-basesize)*(x+effectorsize-basesize)+y*y+(z+effectorsize-basesize)*(z+effectorsize-basesize));
  float a2=shin*shin-z*z;
  float alphy = acos((-a2+thigh*thigh+c*c)/(2*thigh*c));
  float beta = -atan2(y,x);

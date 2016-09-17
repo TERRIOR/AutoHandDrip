@@ -3,7 +3,8 @@
 
 //extern const float shin,thigh,baseside,effectorside;
 //extern const double leg;
-extern int x,y,z;
+extern int x,y,h;
+extern bool isdrip;
 typedef struct ANGLE angle;
 struct ANGLE{
 float angle1;

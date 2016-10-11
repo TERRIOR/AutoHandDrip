@@ -5,12 +5,13 @@
 bool waterstate=LOW;
 const int waterpin=2;
 const int ledpin=13;
+const int relaypump=12;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   pinMode(waterpin,INPUT);
   pinMode(ledpin,OUTPUT);
-  
+  pinMode(relaypump,OUTPUT);
 }
 
 void loop() {
@@ -18,9 +19,11 @@ void loop() {
   waterstate=digitalRead(waterpin);
   if(waterstate==LOW){
     digitalWrite(ledpin,HIGH);
+    digitalWrite(relaypump,LOW);
     Serial.println("reached");
   }else{
     Serial.println("unreached");
     digitalWrite(ledpin,LOW);
+    digitalWrite(relaypump,HIGH);
   }
 }

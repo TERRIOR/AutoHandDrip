@@ -5,8 +5,13 @@
 #include "Max6675_1.h"
 #include"pid.h"
 #define RelayPin 13
+/*
+6,7,8 are used at max6675
+10,11,12 are used at three servo which drive the machine hand 
+*/
+
 Timer t;                               //instantiate the timer object
-Max6675 ts(9, 10,11);
+Max6675 ts(6,7,8);//原为9,10,11没必要
 // 定义我们将要使用的变量
 double Setpoint, Input, Output;
 //指定链接和最初的调优参数
@@ -25,9 +30,9 @@ void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
   //机械手部分的初始化
-  myservo1.attach(4);
-  myservo2.attach(5);
-  myservo3.attach(6);
+  myservo1.attach(10);
+  myservo2.attach(11);
+  myservo3.attach(12);
   delay(20);
   myservo1.write(0);
   myservo2.write(0);
@@ -79,10 +84,11 @@ void movetop(){
     Serial.print("  ");
     Serial.println(ang.angle3);
   }
-
-  //myservo1.write(ang.angle1);
-  //myservo2.write(ang.angle2);
-  //myservo3.write(ang.angle3);
+  //*1.5 so that map the angle from 0~120 to 0~180
+  //initangle -ang.angle: change the angle to servo angle 
+  myservo1.write((initangle-ang.angle1)*1.5);
+  myservo2.write((initangle-ang.angle2)*1.5);
+  myservo3.write((initangle-ang.angle3)*1.5);
 }
 void sreceive(){
    while (Serial1.available() > 0 )  
@@ -107,20 +113,23 @@ void sreceive(){
             x=comdata.substring(1,yindex).toInt();
             hindex=comdata.indexOf('h',0);
             //if comdata contain the 'h' get the h 
-            if(hindex!=-1){
-              h=comdata.substring(hindex+1).toInt()-100;//h 坐标偏移100 客户端初始50 即-50
+            if(hindex>0){
+              h=comdata.substring(hindex+1).toInt()-170;//h 坐标偏移100 客户端初始50 即-50
               y=comdata.substring(yindex+1,hindex).toInt();
             }else {
               y=comdata.substring(yindex+1).toInt();
             }
         break;//change the "x"and"y" it is possible that the high change as well; 
         case 'h':
-          h=comdata.substring(1).toInt()-100;
+          h=comdata.substring(1).toInt()-170;
         break;//only change the "high"
         case '0':
           isdrip=false;
         break;//stop pour water
       }
+      setinmax(&x,45,-45);
+      setinmax(&y,45,-45);
+      setinmax(&h,-90,-130);
       if(isdrip){
         Serial.print("x:");
         Serial.print(x);

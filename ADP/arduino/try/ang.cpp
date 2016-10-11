@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include "ang.h"
 const double leg = 6.28*120/360;
+const int initangle=30;
 const float shin=50,thigh=110,basesize=35,effectorsize=22;
 bool isdrip=false;
 int x,y,h;
@@ -51,4 +52,8 @@ void xyztoangle(int x,int y,int z,angle *a){
   a->angle3=Angle(p3.x,p3.y,p3.z);
   //Serial.println(a->angle1);
 
+}
+void setinmax(int *j,int max, int min){
+  if(*j>max)*j=max;
+  if(*j<min)*j=min;
 }

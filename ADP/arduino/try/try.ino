@@ -83,12 +83,19 @@ void movetop(){
     Serial.print(ang.angle2);
     Serial.print("  ");
     Serial.println(ang.angle3);
+    isdrip=false;  
+    myservo1.write((initangle-ang.angle1)*1.5);
+    myservo2.write((initangle-ang.angle2)*1.5);
+    myservo3.write((initangle-ang.angle3)*1.5); 
+  }else{
+    myservo1.write((initangle-ang.angle1)*1.5);
+    myservo2.write((initangle-ang.angle2)*1.5);
+    myservo3.write((initangle-ang.angle3)*1.5); 
+    //Serial.println("nodrip");
   }
   //*1.5 so that map the angle from 0~120 to 0~180
   //initangle -ang.angle: change the angle to servo angle 
-  myservo1.write((initangle-ang.angle1)*1.5);
-  myservo2.write((initangle-ang.angle2)*1.5);
-  myservo3.write((initangle-ang.angle3)*1.5);
+
 }
 void sreceive(){
    while (Serial1.available() > 0 )  
@@ -129,7 +136,7 @@ void sreceive(){
       }
       setinmax(&x,45,-45);
       setinmax(&y,45,-45);
-      setinmax(&h,-90,-130);
+      setinmax(&h,-70,-150);
       if(isdrip){
         Serial.print("x:");
         Serial.print(x);
@@ -137,8 +144,6 @@ void sreceive(){
         Serial.print(y);
         Serial.print("h:");
         Serial.println(h);
-      }else{
-        Serial.println("not drip");
       }
       //Serial.print(comdata);
       comdata = "";

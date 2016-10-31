@@ -1,12 +1,10 @@
 #include <Event.h>
 #include <Timer.h>
-
 #include <PID_v1.h>
 #include <Max6675.h>
 #include "PID_AutoTune_v0.h"
 const int relaypin=7;
 int pidstep=0;
-
 Timer t; 
 byte ATuneModeRemember=2;
 double input=30, output=10, setpoint=96;
@@ -19,19 +17,25 @@ double outputStart=5;
 double aTuneStep=20, aTuneNoise=1, aTuneStartValue=60;
 unsigned int aTuneLookBack=20;//设置选取峰值的时间范围 例如 :小于25时 间隔时间:aTuneLookBack*4*250/1000=aTuneLookBack 
                                //大于25时 间隔时间;100*10*aTuneLookBack/1000=aTuneLookBack 不过大于25后记录的数组大小不会变 依然是100 只是每个成员的时间间隔增加了
-
-boolean tuning = true;
+boolean tuning = false;
 unsigned long  modelTime, serialTime;
-
 PID myPID(&input, &output, &setpoint,kp,ki,kd, DIRECT);
 PID_ATune aTune(&input, &output);
-
 //set to false/true to connect to the real world设置是否用真实参数(是否仿真)
-boolean useSimulation = true;
+boolean useSimulation = false;
 Max6675 ts(8, 9, 10);
+
+bool waterstate=LOW;
+const int waterpin=2;
+const int ledpin=13;
+const int relaypump=12;
+bool reached=false;
 void setup()
 {
   pinMode(relaypin,OUTPUT);
+  pinMode(waterpin,INPUT);
+  pinMode(ledpin,OUTPUT);
+  pinMode(relaypump,OUTPUT);
   ts.setOffset(0);
   if(useSimulation)
   {
@@ -59,11 +63,20 @@ void setup()
 
 void loop()
 {
+  waterstate=digitalRead(waterpin);
+  if(waterstate==LOW||reached){//此处只要有一次到达就不再进水,保护(实际项目中把"||reached"删掉)
+    digitalWrite(ledpin,HIGH);
+    digitalWrite(relaypump,LOW);
+    Serial.println("reached");
+    reached=true;
+  }else{
+    Serial.println("unreached");
+    digitalWrite(ledpin,LOW);
+    digitalWrite(relaypump,HIGH);
+    reached=false;
+  }
   t.update();
   unsigned long now = millis();
-
-  
-  
   if(tuning)
   {
     byte val = (aTune.Runtime());//如果返回1则说明不再需要自整定了 返回0则继续
@@ -107,18 +120,19 @@ void loop()
 }
 
 void pidcontrol(){
-  if(output>0){
-    if(output>100)output=100;
-    if(pidstep<50){
-      if(pidstep<output/2){
-      digitalWrite(relaypin,HIGH);
-      }else{
-      digitalWrite(relaypin,LOW);
-      }
-      pidstep++;
-    }else pidstep=0;
-  }else digitalWrite(relaypin,LOW);
-  
+  if(reached){
+    if(output>0){
+      if(output>100)output=100;
+      if(pidstep<50){
+        if(pidstep<output/2){
+          digitalWrite(relaypin,HIGH);
+        }else{
+          digitalWrite(relaypin,LOW);
+        }
+        pidstep++;
+      }else pidstep=0;
+    }else digitalWrite(relaypin,LOW);
+  }
 }
 void gettemp(){
   if(!useSimulation)

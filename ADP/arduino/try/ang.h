@@ -3,19 +3,20 @@
 
 //extern const float shin,thigh,baseside,effectorside;
 //extern const double leg;
-extern int x,y,h;
+extern int s,r;
 extern const int initangle;
 extern bool isdrip;
+extern float  h,x,y,cangle;
 typedef struct ANGLE angle;
 struct ANGLE{
 float angle1;
 float angle2;
 float angle3;
 };
-void setinmax(int *j,int max, int min);
+void setinmax(float *j,int max, int min);
 float Angle(float x,float y,float z);
 void xyztoangle(int x,int y,int z,angle* a);
-
+void setinmaxint(int *j,int max, int min);
 
 
 #endif // ANGLE_H_INCLUDED

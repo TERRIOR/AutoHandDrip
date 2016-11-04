@@ -12,14 +12,21 @@
 6,7,8 are used at max6675
 10,11,12 are used at three servo which drive the machine hand 
 */
-
+bool waterstate=LOW;
+const int waterpin=2;
+const int ledpin=13;
+const int relaypump=12;
+bool reached=false;
+int pidstep=0;
+const int relaypin=7;
 Timer t;                               //instantiate the timer object
 Max6675 ts(6,7,8);//原为9,10,11没必要
 // 定义我们将要使用的变量
-double Setpoint, Input, Output;
+double Setpoint=90, Input, Output;
+double kp=1.55,ki=0.01,kd=0;
 //指定链接和最初的调优参数
 float error=3;//允许的误差范围
-PID myPID(&Input, &Output, &Setpoint,2,5,1, DIRECT);
+PID myPID(&Input, &Output, &Setpoint,kp,ki,kd, DIRECT);
 int WindowSize = 5000;
 unsigned long windowStartTime;
 Servo myservo1,myservo2,myservo3;  
@@ -31,6 +38,7 @@ void sreceive();
 void movetop();
 void receivesrh();
 void movetop2();
+void watchreach();
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
@@ -47,19 +55,24 @@ void setup() {
   ts.setOffset(0);
   windowStartTime = millis();
   //初始化变量
-  Setpoint = 35;
+  
   //告诉PID在从0到窗口大小的范围内取值
-  myPID.SetOutputLimits(0, WindowSize);
+  //myPID.SetOutputLimits(0, WindowSize);
   //开启PID
   myPID.SetMode(AUTOMATIC);
   lasttemp = ts.getCelsius();
   FlexiTimer2::set(20, 1.0/1000, movetop2); // call every 500 1ms "ticks"
   // FlexiTimer2::set(500, flaqsh); // MsTimer2 style is also supported
   FlexiTimer2::start();
+  t.every(200, gettemp);
+  t.every(50,pidcontrol);
   //t.every(100, movetop);
 }
 
 void loop() {  
+ 
+  watchreach();
+  t.update();
   //t.update();
   //movetop();
   receivesrh();
@@ -271,4 +284,38 @@ void movetop2(){
     myservo3.write(initangle+ang.angle3+5); 
   }
 }
-
+void watchreach(){
+   waterstate=digitalRead(waterpin);
+  if(waterstate==LOW||reached){//此处只要有一次到达就不再进水,保护(实际项目中把"||reached"删掉)
+    digitalWrite(ledpin,HIGH);
+    digitalWrite(relaypump,LOW);
+    Serial.println("reached");
+    reached=true;
+    myPID.Compute();
+  }else{
+    Serial.println("unreached");
+    digitalWrite(ledpin,LOW);
+    digitalWrite(relaypump,HIGH);
+    reached=false;
+  }
+}
+void pidcontrol(){
+  if(reached){
+    
+    if(Output>0){
+      if(Output>100)Output=100;
+      if(pidstep<50){
+        if(pidstep<Output/2){
+          digitalWrite(relaypin,HIGH);
+        }else{
+          digitalWrite(relaypin,LOW);
+        }
+        pidstep++;
+      }else pidstep=0;
+    }else digitalWrite(relaypin,LOW);
+  }
+}
+void gettemp(){
+    //Input=ts.getCelsius();
+     average_filter(ts.getCelsius(),&Input);
+}

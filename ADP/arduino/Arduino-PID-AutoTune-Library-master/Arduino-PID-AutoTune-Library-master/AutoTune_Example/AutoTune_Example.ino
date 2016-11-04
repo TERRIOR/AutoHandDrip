@@ -7,9 +7,9 @@ const int relaypin=7;
 int pidstep=0;
 Timer t; 
 byte ATuneModeRemember=2;
-double input=30, output=10, setpoint=96;
+double input, output, setpoint=90;
 //double kp=2,ki=0.5,kd=2;
-double kp=1.12,ki=0.05,kd=0;
+double kp=1.55,ki=0.01,kd=0;
 //设置仿真参数
 double kpmodel=1.5, taup=100, theta[50];
 double outputStart=5;
@@ -69,6 +69,7 @@ void loop()
     digitalWrite(relaypump,LOW);
     Serial.println("reached");
     reached=true;
+    myPID.Compute();
   }else{
     Serial.println("unreached");
     digitalWrite(ledpin,LOW);
@@ -93,7 +94,7 @@ void loop()
       AutoTuneHelper(false);//设置mypid模式
     }
   }
-  else myPID.Compute();
+
   
   if(useSimulation)
   {

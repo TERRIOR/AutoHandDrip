@@ -1,21 +1,22 @@
 #include <Event.h>
 #include <Timer.h>
-#include <PID_v1.h>
+#include "pid.h"
 #include <Max6675.h>
 #include "PID_AutoTune_v0.h"
 const int relaypin=7;
 int pidstep=0;
 Timer t; 
 byte ATuneModeRemember=2;
-double input, output, setpoint=90;
+float temp;
+double input, output,out, setpoint=90;
 //double kp=2,ki=0.5,kd=2;
-double kp=1.55,ki=0.01,kd=0;
+double kp=5,ki=0.001,kd=0;//ki0.01 too big kp=3 ok
 //设置仿真参数
-double kpmodel=1.5, taup=100, theta[50];
+double kpmodel=2, taup=100, theta[50];
 double outputStart=5;
 //设置整定参数
-double aTuneStep=20, aTuneNoise=1, aTuneStartValue=60;
-unsigned int aTuneLookBack=20;//设置选取峰值的时间范围 例如 :小于25时 间隔时间:aTuneLookBack*4*250/1000=aTuneLookBack 
+double aTuneStep=10, aTuneNoise=0.5, aTuneStartValue=20;
+unsigned int aTuneLookBack=25;//设置选取峰值的时间范围 例如 :小于25时 间隔时间:aTuneLookBack*4*250/1000=aTuneLookBack 
                                //大于25时 间隔时间;100*10*aTuneLookBack/1000=aTuneLookBack 不过大于25后记录的数组大小不会变 依然是100 只是每个成员的时间间隔增加了
 boolean tuning = false;
 unsigned long  modelTime, serialTime;
@@ -67,14 +68,15 @@ void loop()
   if(waterstate==LOW||reached){//此处只要有一次到达就不再进水,保护(实际项目中把"||reached"删掉)
     digitalWrite(ledpin,HIGH);
     digitalWrite(relaypump,LOW);
-    Serial.println("reached");
+    //Serial.println("reached");
     reached=true;
-    myPID.Compute();
+    
   }else{
     Serial.println("unreached");
     digitalWrite(ledpin,LOW);
     digitalWrite(relaypump,HIGH);
     reached=false;
+    myPID.SetIterm(0);//在注水时把积分清零 以免上一次加热用到的积分在这次继续用
   }
   t.update();
   unsigned long now = millis();
@@ -93,6 +95,8 @@ void loop()
       myPID.SetTunings(kp,ki,kd);
       AutoTuneHelper(false);//设置mypid模式
     }
+  }else if(reached){
+    myPID.Compute();
   }
 
   
@@ -122,10 +126,18 @@ void loop()
 
 void pidcontrol(){
   if(reached){
+   
     if(output>0){
-      if(output>100)output=100;
+      if(output>100)out=100;
+      else out=output;
+      if(input<setpoint*0.92) 
+      {
+        out=100;
+      }else if(input>setpoint){
+        out=0;
+      }
       if(pidstep<50){
-        if(pidstep<output/2){
+        if(pidstep<out/2){
           digitalWrite(relaypin,HIGH);
         }else{
           digitalWrite(relaypin,LOW);
@@ -139,7 +151,9 @@ void gettemp(){
   if(!useSimulation)
   { //pull the input in from the real world从现实世界拉取input
     //input = analogRead(0);//0~255;
-    input=ts.getCelsius();
+    //input=ts.getCelsius();
+    temp=ts.getCelsius();
+    average_filter(temp,&input);
   }
   
 }

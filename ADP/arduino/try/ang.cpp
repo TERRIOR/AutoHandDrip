@@ -10,7 +10,7 @@ bool isdrip=false;
 float x,y,h;
 int s,r;
 float cangle;
-
+bool dripstart=false;
 struct posi{
   float x;
   float y;

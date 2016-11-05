@@ -6,40 +6,49 @@
 #include "ang.h"
 #include "Max6675_1.h"
 #include"pid.h"
-#define RelayPin 22
 #include <FlexiTimer2.h>
 /*
 6,7,8 are used at max6675
-10,11,12 are used at three servo which drive the machine hand 
+22,24,26 are used at three servo which drive the machine hand 
+28加热继电器 30 input 水位机 32 水泵继电器
 */
-bool waterstate=LOW;
-const int waterpin=2;
-const int ledpin=13;
-const int relaypump=12;
+char com;
+String comdata = "";
+Timer t;  //instantiate the timer object
 bool reached=false;
-int pidstep=0;
-const int relaypin=7;
-Timer t;                               //instantiate the timer object
+bool waterstate=LOW;
+const int relaypin=28;//加热继电器
+const int waterpin=30;//水位机
+const int ledpin=13;//led 没啥卵用
+const int relaypump=32;//控温初始化
+const int relaydrip=34;//水阀
+/*******************pid参数**********************/
+const int outputmax = 100;//输出的最大值
+int out;//最终的输出
+int pidstep=0;//脉宽
 Max6675 ts(6,7,8);//原为9,10,11没必要
 // 定义我们将要使用的变量
-double Setpoint=90, Input, Output;
-double kp=1.55,ki=0.01,kd=0;
+double Setpoint=90, Input, Output;//pid库计算的变量
+double kp=5,ki=0.001,kd=0;//pid参数
 //指定链接和最初的调优参数
-float error=3;//允许的误差范围
-PID myPID(&Input, &Output, &Setpoint,kp,ki,kd, DIRECT);
-int WindowSize = 5000;
-unsigned long windowStartTime;
-Servo myservo1,myservo2,myservo3;  
-String comdata = "";
-char com;
+PID myPID(&Input, &Output, &Setpoint,kp,ki,kd, DIRECT);//初始化 传递参数指针
+/*******************舵机参数******************************/
+Servo myservo1,myservo2,myservo3;
 angle ang={0,0,0};//写默认的角度 暂时先写0,0,0
-//int x_max=100,y_max=100,z_max=100;
-void sreceive();
-void movetop();
-void receivesrh();
-void movetop2();
-void watchreach();
+/*******************函数声明***************************************/
+void sreceive();//串口获得xyz
+void movetop();//运动到xyz
+void receivesrh();//串口读取极坐标
+void movetop2();//mode2 极坐标定位
+void watchreach();//获得滤波后的温度
 void setup() {
+  //引脚初始化
+  pinMode(relaypin,OUTPUT);
+  pinMode(waterpin,INPUT);
+  pinMode(ledpin,OUTPUT);
+  pinMode(relaypump,OUTPUT);
+  pinMode(relaydrip,OUTPUT);
+  //串口初始化
   Serial.begin(9600);
   Serial1.begin(9600);
   //机械手部分的初始化
@@ -51,55 +60,28 @@ void setup() {
   myservo2.write(88);
   myservo3.write(95);
   delay(20);
-  //控温初始化
+   //控温初始化
   ts.setOffset(0);
-  windowStartTime = millis();
-  //初始化变量
-  
-  //告诉PID在从0到窗口大小的范围内取值
-  //myPID.SetOutputLimits(0, WindowSize);
-  //开启PID
-  myPID.SetMode(AUTOMATIC);
+  myPID.SetOutputLimits(0, outputmax);//告诉PID在从0到max的范围内取值
+  myPID.SetMode(AUTOMATIC); //开启PID
   lasttemp = ts.getCelsius();
+  //定时器初始化
   FlexiTimer2::set(20, 1.0/1000, movetop2); // call every 500 1ms "ticks"
-  // FlexiTimer2::set(500, flaqsh); // MsTimer2 style is also supported
   FlexiTimer2::start();
-  t.every(200, gettemp);
+  t.every(250, gettemp);
   t.every(50,pidcontrol);
   //t.every(100, movetop);
 }
 
 void loop() {  
- 
   watchreach();
   t.update();
-  //t.update();
-  //movetop();
   receivesrh();
-  //滤波去除误差，并输入温度
-  
-  //average_filter(ts.getCelsius(),&Input);
-  //Serial.print(Input);
-  //Serial.print(",");
-  //myPID.Compute();//计算是否需要重新计算
-  /************************************************
-   * turn the output pin on/off based on pid output 基于PID输出，打开或关闭端口输出
-   ************************************************/
-  /*if(millis() - windowStartTime>WindowSize)
-  { //time to shift the Relay Window 继电器窗口时间
-    windowStartTime += WindowSize;
-  }
-  if(Output < millis() - windowStartTime) digitalWrite(RelayPin,HIGH);
-  else digitalWrite(RelayPin,LOW);
-  if (ts.getCelsius()) delay(300);*/
-  
-  //Serial.println(ts.getCelsius(), 2);
- // Serial.println(" C / ");
-   
 }
 void movetop(){
   sreceive();
   if(isdrip){
+    digitalWrite(relaydrip,HIGH);
     setinmax(&x,45,-45);
     setinmax(&y,45,-45);
     setinmax(&h,-70,-150);
@@ -121,12 +103,8 @@ void movetop(){
     myservo2.write(initangle+ang.angle2);
     myservo3.write(initangle+ang.angle3); 
   }else{
-    myservo1.write(initangle+ang.angle1);
-    myservo2.write(initangle+ang.angle2);
-    myservo3.write(initangle+ang.angle3); 
-    //Serial.println("nodrip");
+    digitalWrite(relaydrip,LOW);
   }
-  //*1.5 so that map the angle from 0~120 to 0~180
   //initangle -ang.angle: change the angle to servo angle 
 
 }
@@ -191,7 +169,6 @@ void receivesrh(){
       }
       comdata += com;
       delay(6);
-      
     }
     if (comdata.length() > 0)
     {
@@ -227,6 +204,13 @@ void receivesrh(){
               h=comdata.substring(1).toInt()-170;
             }
         break;//only change the "high"
+        case '1'://开启冲煮 app开始计时
+          dripstart=true;
+        break;
+        case '2'://关闭冲煮过程
+          dripstart=false;
+          reached=false;//reached置为false 关闭冲煮意味着可以进水 让水泵重新有机会进行进水
+        break;
         case '0':
           isdrip=false;
         break;//stop pour water
@@ -253,12 +237,12 @@ void receivesrh(){
     }
 }
 void movetop2(){
-
-  if(isdrip){
+  if(isdrip&&dripstart){
     cangle+=PI*s/2500;//2*PI/20*s/100/5
     if(cangle>6.28){
       cangle-=2*PI;
     }
+    digitalWrite(relaydrip,HIGH);
     x= (float) (r*cos(cangle));
     y= (float) (r*sin(cangle));
     setinmax(&x,45,-45);
@@ -270,7 +254,8 @@ void movetop2(){
     Serial.print("y:");
     Serial.print(y);
     Serial.print("h:");
-    Serial.println(h);*/
+    Serial.println(h);
+    */
     xyztoangle(x, h, y, &ang);
     Serial.print("  ");
     Serial.print(ang.angle1);
@@ -278,18 +263,20 @@ void movetop2(){
     Serial.print(ang.angle2);
     Serial.print("  ");
     Serial.println(ang.angle3);
-    //isdrip=false;  
     myservo1.write(initangle+ang.angle1+3);
     myservo2.write(initangle+ang.angle2-2);
     myservo3.write(initangle+ang.angle3+5); 
-  }
+  }else digitalWrite(relaydrip,LOW);
 }
 void watchreach(){
-   waterstate=digitalRead(waterpin);
+  
+  if(!dripstart){
+    waterstate=digitalRead(waterpin);
+  } else waterstate=LOW;//为了注水时绝对不会进水
   if(waterstate==LOW||reached){//此处只要有一次到达就不再进水,保护(实际项目中把"||reached"删掉)
     digitalWrite(ledpin,HIGH);
     digitalWrite(relaypump,LOW);
-    Serial.println("reached");
+    //Serial.println("reached");
     reached=true;
     myPID.Compute();
   }else{
@@ -301,11 +288,17 @@ void watchreach(){
 }
 void pidcontrol(){
   if(reached){
-    
     if(Output>0){
-      if(Output>100)Output=100;
+      if(Output>outputmax)out=outputmax;
+      else out=Output;
+      if(Input<Setpoint*0.92) 
+      {
+        out=outputmax;
+      }else if(Input>Setpoint){
+        out=0;
+      }
       if(pidstep<50){
-        if(pidstep<Output/2){
+        if(pidstep<out/2){
           digitalWrite(relaypin,HIGH);
         }else{
           digitalWrite(relaypin,LOW);
@@ -316,6 +309,5 @@ void pidcontrol(){
   }
 }
 void gettemp(){
-    //Input=ts.getCelsius();
-     average_filter(ts.getCelsius(),&Input);
+    average_filter(ts.getCelsius(),&Input);
 }

@@ -60,9 +60,7 @@ class PID
   //Display functions ****************************************************************                                                                 显示函数
         double GetKp();                                                  // These functions query the pid for interal values.                                                                 函数确定PID的区间值。
         double GetKi();                                                  //  they were created mainly for the pid front-end,                                                                 它们主要为PID前端而创建。
-        double GetKd();                                                  // where it's important to know what is actually             这个前端对于了解PID内部实际工作很重要。
-        double GetIterm();
-        void SetIterm(double iterm);
+        double GetKd();                                                  // where it's important to know what is actually                                                                   这个前端对于了解PID内部实际工作很重要。
         int GetMode();                                                  //  inside the PID.
         int GetDirection();                                          //
  

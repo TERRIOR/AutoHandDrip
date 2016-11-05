@@ -5,7 +5,7 @@
 //extern const double leg;
 extern int s,r;
 extern const int initangle;
-extern bool isdrip;
+extern bool isdrip,dripstart;
 extern float  h,x,y,cangle;
 typedef struct ANGLE angle;
 struct ANGLE{

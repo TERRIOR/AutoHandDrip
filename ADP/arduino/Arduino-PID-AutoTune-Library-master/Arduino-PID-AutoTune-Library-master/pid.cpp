@@ -31,7 +31,7 @@ PID::PID(double* Input, double* Output, double* Setpoint,
     mySetpoint = Setpoint;
         inAuto = false;//设置对应指针
          
-        PID::SetOutputLimits(0, 100);                                //default output limit corresponds to                                         默认输出限制，是由Arduino PWM限制的
+        PID::SetOutputLimits(0, 255);                                //default output limit corresponds to                                         默认输出限制，是由Arduino PWM限制的
                                                                                                 //the arduino pwm limits
  
     SampleTime = 300;                                                        //default Controller Sample Time is 0.1 seconds                默认控制采样时间0.1s
@@ -244,8 +244,6 @@ void average_filter(float c,double *input){
  * 函数查询PID的内部状态。它们在这里是为了显示的目的。
  * 这是PID前端使用的功能。
  ******************************************************************************/
-double PID::GetIterm(){ return ITerm; }
-void PID::SetIterm(double iterm){ITerm=iterm;}
 double PID::GetKp(){ return  dispKp; }
 double PID::GetKi(){ return  dispKi;}
 double PID::GetKd(){ return  dispKd;}

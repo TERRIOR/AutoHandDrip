@@ -2,6 +2,7 @@
 #define PID_v1_h
 #define LIBRARY_VERSION        1.0.0
  extern float lasttemp;
+ extern bool ifpid;
  //extern int over_cnt;
  //extern float filter_sum;;
 /*不需要其他文件看到

@@ -5,7 +5,7 @@
 const double leg = 6.28*120/360;
 const int initangle=90;
 //shin:小腿 thigh :大腿  base:上方的 effect:下面的
-const float shin=110,thigh=50,basesize=35,effectorsize=22;
+const float shin=117,thigh=50,basesize=35,effectorsize=20;
 bool isdrip=false;
 float x,y,h;
 int s,r;
@@ -17,12 +17,36 @@ struct posi{
   float z;
 };
 typedef struct posi posi;
-/*float dist(float x1,float x2,float y1,float y2)
+
+//在差值数组里取出一个点 并向前排一位
+float getpoint(float *shuzu)
 {
-float distance;
-distance=sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
-return distance;
-}*/
+  float re=shuzu[0];
+  for(int i=0;i<11;i++){
+    shuzu[i]=shuzu[i+1];
+  }
+  return re;
+}
+//计算新增的五个点 并加入数组
+void computedvalue(float secpoint,float *z,float *dvalue)
+{
+  float firpoint=z[2];
+  for(int i=0;i<2;i++){
+    z[i]=z[i+1];
+  }
+  z[2]=secpoint;
+  for(int i=0;i<4;i++){
+    dvalue[i]=firpoint+(secpoint-firpoint)*(i+1)/5;
+  }
+  dvalue[4]=secpoint;
+}
+//把新增的五个点 加进细分数组
+void addtoc(float *dvalue,float *csz)
+{
+  for(int i=0;i<5;i++){
+    csz[i+6]=dvalue[i];
+  }
+}  
 //转换坐标
 void changeangle(posi* posi_1,posi* posi_2){
         (posi_2->x) = (posi_1->x)*cos(leg) - (posi_1->z)*sin(leg);

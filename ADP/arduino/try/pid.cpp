@@ -13,11 +13,11 @@
 #include "pid.h"
 //自己修改部分
 float lasttemp;
- float filter_sum;
- int over_cnt;
- int TFILTER_N=4;
- float Buffer[4];
- 
+float filter_sum;
+int over_cnt;
+int TFILTER_N=4;
+float Buffer[4];
+bool ifpid=false; 
 /*Constructor (...)*********************************************************                                构造函数
  *    The parameters specified here are those for for which we can't set up                                 这里指定的参数是那些我们不能建立可靠的预设值，
  *    reliable defaults, so we need to have the user set them.                                                                                因此我们需要有用户来设置它们。

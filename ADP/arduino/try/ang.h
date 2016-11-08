@@ -17,7 +17,9 @@ void setinmax(float *j,int max, int min);
 float Angle(float x,float y,float z);
 void xyztoangle(int x,int y,int z,angle* a);
 void setinmaxint(int *j,int max, int min);
-
+void addtoc(float *dvalue,float *csz);
+void computedvalue(float secpoint,float *z,float *dvalue);
+float getpoint(float *shuzu);
 
 #endif // ANGLE_H_INCLUDED
 

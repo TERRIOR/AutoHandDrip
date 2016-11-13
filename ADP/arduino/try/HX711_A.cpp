@@ -28,12 +28,12 @@ long HX711::read() {
     long val = 0;
     while (!is_ready());
     for (int i = 0; i < 24; i++) {
-        pulse(SCK);
+        pulse1(SCK);
         val <<= 1;
         if (digitalRead(DOUT) == HIGH) val++;
     }
     for (int i = 0; i < AMP; i++) {
-        pulse(SCK);
+        pulse1(SCK);
     }
     return val & (1L << 23) ? val | ((-1L) << 24) : val;
 }

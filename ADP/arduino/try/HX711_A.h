@@ -8,7 +8,7 @@
  */
 #ifndef HX711A_H
 #define HX711A_H
-#define pulse(pin) { digitalWrite(pin, HIGH); digitalWrite(pin, LOW); }
+#define pulse1(pin) { digitalWrite(pin, HIGH); digitalWrite(pin, LOW); }
 #include <Arduino.h>
 
 class HX711
@@ -22,8 +22,8 @@ class HX711
         //float lasttemp;
         float filter_sum;
         int over_cnt;
-        int TFILTER_N=4;
-        float Buffer[4];
+        int TFILTER_N=5;
+        float Buffer[5];
     public:
         // define sck , dout pin, amplification factor and coefficient
         HX711(byte sck, byte dout, byte amp = 128, double co = 1);

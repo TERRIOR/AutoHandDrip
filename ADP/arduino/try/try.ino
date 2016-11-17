@@ -14,11 +14,12 @@
 22,24,26 are used at three servo which drive the machine hand 
 28加热继电器 30 input 水位机 32 水泵继电器 46电磁阀
 34,36,38,40,42,44压力传感器
+x,y,h 是相对于舵机一的 因此 需要找出
 */
 /************************serial*****************************/
-char com;
-String comdata = "";
 
+String comdata = "";
+static bool ifmove=true;
 /*************************串口0数据********************************/
 //send
 bool ifrecognize=false;//是否开启单目识别
@@ -85,14 +86,15 @@ void serialpiin();//接收pi信号 双目在此 mode=3
 
 void setup() {
   //中断初始化
-  attachInterrupt(2,waterpulse, RISING);
+  //attachInterrupt(2,waterpulse, RISING);
   //引脚初始化
   pinMode(relaypin,OUTPUT);
   pinMode(waterpin,INPUT);
   pinMode(ledpin,OUTPUT);
   pinMode(relaypump,OUTPUT);
   pinMode(relaydrip,OUTPUT);
-  digitalWrite(relaydrip,LOW);
+  digitalWrite(relaydrip,HIGH);
+  digitalWrite(relaypump,HIGH);
   //串口初始化
   Serial.begin(9600);
   Serial1.begin(9600);
@@ -102,9 +104,14 @@ void setup() {
   myservo2.attach(24);//11
   myservo3.attach(26);
   delay(20);
-  myservo1.write(93-20);
+  xyztoangle(60, -100, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
+  //xyztoangle(0, -100, 0, &ang);
+  myservo1.write(initangle+ang.angle1+3);
+  myservo2.write(initangle+ang.angle2-2);
+  myservo3.write(initangle+ang.angle3+5); 
+  /*myservo1.write(93-20);
   myservo2.write(88-20);
-  myservo3.write(95-20);
+  myservo3.write(95-20);*/
   delay(20);
   //压力初始化
   r_offset=hx_r.tare();
@@ -126,9 +133,9 @@ void setup() {
   FlexiTimer2::set(20, 1.0/1000, movetop); // call every 500 1ms "ticks"
   FlexiTimer2::start();
   t.every(250, gettemp);//250更新一次温度
-  t.every(50,pidcontrol);//
+  //t.every(50,pidcontrol);//
   t.every(50, getweight);//还没调好 十分不准
-  t.every(time,waterspeed);//每1000ms去计算一次流速
+  //t.every(time,waterspeed);//每1000ms去计算一次流速
   t.every(300,serialappout);//每1000ms去发送给app
   t.every(500,serialpiout);//每2000ms
 }
@@ -141,14 +148,14 @@ void loop() {
     //Serial.println("mode");
     receivesrh();
   }else if(mode==2){
-    
+    serialhuin();
   }
 }
 //app输入
 void receivesrh(){
    while (Serial1.available() > 0 )  
     {
-      com=char(Serial1.read());
+      char com=char(Serial1.read());
       if(com==' '){
         break;
       }
@@ -157,7 +164,7 @@ void receivesrh(){
     }
     if (comdata.length() > 0)
     {
-      Serial.println(comdata);
+      //Serial.println(comdata);
       int sindex=0;
       int rindex=0;
       int hindex=0;
@@ -174,7 +181,6 @@ void receivesrh(){
         break;//change the "x"and"y" it is possible that the high change as well; 
         case 'r':
             isdrip=true;
-            
             //sindex=comdata.indexOf('s',0);
             if(comdata.length()>3){
               r=comdata.substring(1,3).toInt();
@@ -184,20 +190,20 @@ void receivesrh(){
         break;
         case 't':
           ifpid=true;//接收到新的温度可以进行pid加热
-          
+          myPID.SetIterm(0);
           if(comdata.length()>3){
             Setpoint=comdata.substring(1,3).toInt();
           }else{
             Setpoint=comdata.substring(1).toInt();
           }
-          Serial.println(String("")+"setpoint:"+Setpoint);
+          //Serial.println(String("")+"setpoint:"+Setpoint);
         break;
         case 'h':
             //isdrip=true;
            if(comdata.length()>3){
-              h=comdata.substring(1,3).toInt()-170;
+              h=comdata.substring(1,3).toInt()-160;
             }else{
-              h=comdata.substring(1).toInt()-170;
+              h=comdata.substring(1).toInt()-160;
             }
         break;//only change the "high"
         case '1'://开启冲煮 app开始计时
@@ -205,9 +211,10 @@ void receivesrh(){
           ifpid=false;
         break;
         case '2'://关闭冲煮过程
-         
           dripstart=false;
           reached=false;//reached置为false 关闭冲煮意味着可以进水 让水泵重新有机会进行进水
+          ifpid=true;
+          Setpoint=70;
         break;
         case '0':
           isdrip=false;
@@ -215,18 +222,7 @@ void receivesrh(){
       }
       setinmaxint(&r,49,0);
       setinmaxint(&s,100,0);
-      setinmax(&h,-110,-140);
-      if(isdrip){
-        Serial.print("s:");
-        Serial.print(s);
-        Serial.print("r:");
-        Serial.print(r);
-        Serial.print("h:");
-        Serial.println(h);
-      }else{
-        Serial.println("not drip");
-        comdata = "";
-      }
+      setinmax(&h,-100,-130);
       //Serial.print(comdata);
       comdata = "";
     }
@@ -235,7 +231,7 @@ void receivesrh(){
 void serialpiin(){
      while (Serial.available() > 0 )  
     {
-      com=char(Serial.read());
+      char com=char(Serial.read());
       if(com==' '){
         break;
       }
@@ -246,7 +242,7 @@ void serialpiin(){
     {
       int yindex=0;
       int hindex=0;
-      Serial.println(comdata);
+      //Serial.println(comdata);
       switch(comdata[0]){
         case 'x':
             if(mode!=2){
@@ -258,7 +254,7 @@ void serialpiin(){
             sx=comdata.substring(1,yindex).toInt();
             //if comdata contain the 'h' get the h 
             if(hindex>0){
-              sh=comdata.substring(hindex+1).toInt()-170;//h 坐标偏移100 客户端初始50 即-50
+              sh=comdata.substring(hindex+1).toInt();//h 坐标偏移100 客户端初始50 即-50
               sy=comdata.substring(yindex+1,hindex).toInt();
             }else {
               sy=comdata.substring(yindex+1).toInt();
@@ -267,7 +263,7 @@ void serialpiin(){
               float zx[5],zy[5],zh[5];
               computedvalue(sx-o_point[0],X,zx);
               computedvalue(sy-o_point[1],Y,zy);
-              computedvalue(sh-o_point[2],H,zh);
+              computedvalue(sh-o_point[2]-125,H,zh);
               addtoc(zx,CX);
               addtoc(zy,CY);
               addtoc(zh,CH);
@@ -289,6 +285,7 @@ void serialpiin(){
           foam=comdata.substring(1,3).toInt();
         break;
          case 't':
+          myPID.SetIterm(0);
           ifpid=true;//接收到新的温度可以进行pid加热
           if(comdata.length()>3){
             Setpoint=comdata.substring(1,3).toInt();
@@ -304,7 +301,7 @@ void serialpiin(){
 void serialhuin(){
    while (Serial2.available() > 0 )  
     {
-      com=char(Serial2.read());
+      char com=char(Serial2.read());
       if(com==' '){
         break;
       }
@@ -315,25 +312,31 @@ void serialhuin(){
     {
       //Serial.println(comdata);
       switch(comdata[0]){
-        case 'o'://确定原点
+        case 'O'://确定原点
           o_point[0]=sx;
           o_point[1]=sy;
           o_point[2]=sh;
           stereostart=true;
           dripstart=true; 
           ifpid=false;
+          //Serial.println('s');
         break;//change the "x"and"y" it is possible that the high change as well; 
         case '1':
           isdrip=true;
+          //Serial.println('1');
         break;
         case '0':
           isdrip=false;
+          //Serial.println('0');
         break;
-        case '2':
+        case 'C':
           isdrip=false;
           stereostart=false;
           dripstart=false;
           reached=false; 
+          ifpid=true;
+          Setpoint=70;
+          //Serial.println('C');
         break;
       }
       comdata = "";
@@ -356,7 +359,7 @@ void movetop(){
     }
     setinmax(&x,45,-45);
     setinmax(&y,45,-45);
-    setinmax(&h,-110,-140);//60~140
+    setinmax(&h,-95,-125);//60~140
     /*
     Serial.print("x:");
     Serial.print(x);
@@ -365,21 +368,34 @@ void movetop(){
     Serial.print("h:");
     Serial.println(h);
     */
-    xyztoangle(x, h, y, &ang);
-    Serial.print("  ");
+    xyztoangle(x+2, h, y-8, &ang);
+    /*Serial.print("  ");
     Serial.print(ang.angle1);
     Serial.print("  ");
     Serial.print(ang.angle2);
     Serial.print("  ");
-    Serial.println(ang.angle3);
+    Serial.println(ang.angle3);*/
     if(mode==0||(mode==2&&stereostart)){
       myservo1.write(initangle+ang.angle1+3);
       myservo2.write(initangle+ang.angle2-2);
       myservo3.write(initangle+ang.angle3+5); 
       digitalWrite(relaydrip,LOW);
+      ifmove=true;
     }
-    
-  }else digitalWrite(relaydrip,HIGH);
+  }else{
+    //xyztoangle(2, -100, -8, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
+  
+    if(ifmove)
+    {
+      xyztoangle(60, -100, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
+      myservo1.write(initangle+ang.angle1+3);
+      myservo2.write(initangle+ang.angle2-2);
+      myservo3.write(initangle+ang.angle3+5); 
+      ifmove=false;
+    }
+
+    digitalWrite(relaydrip,HIGH);
+  } 
 }
 //水位计
 void waterreach(){
@@ -394,7 +410,7 @@ void waterreach(){
     if(ifpid)//冲煮完进水后并不是马上进行加热的 因此没必要进行pid计算 下次冲煮接收到温度再计算
       myPID.Compute();      
   }else{
-    Serial.println("unreached");
+    //Serial.println("unreached");
     digitalWrite(ledpin,LOW);
     digitalWrite(relaypump,LOW);
     reached=false;
@@ -480,19 +496,19 @@ void serialpiout(){
   switch(count2){
     case 1:
     if(weigh>0) 
-      Serial1.print(String("")+"w"+(int)weigh);
+      Serial.print(String("")+"w"+(int)weigh);
     break;
     case 2:
     if(weigh_m>0) 
-      Serial1.print(String("")+"m"+(int)weigh_m);
+      Serial.print(String("")+"m"+(int)weigh_m);
     break;
     case 3:
     //if(waterFlow!=0)
-      Serial1.print(String("")+"f"+(int)waterFlow);
+      Serial.print(String("")+"f"+(int)waterFlow);
     break;
     case 4:
     if(Input!=0)
-      Serial1.print(String("")+"t"+(int)Input);
+      Serial.print(String("")+"t"+(int)Input);
     count2=0;
     break;
   }
@@ -501,7 +517,7 @@ void serialpiout(){
 void sreceive(){
    while (Serial1.available() > 0 )  
     {
-      com=char(Serial1.read());
+      char com=char(Serial1.read());
       if(com==' '){
         break;
       }

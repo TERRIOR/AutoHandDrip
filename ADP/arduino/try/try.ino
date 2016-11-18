@@ -31,12 +31,12 @@ int mode=0;//true:极坐标模式 false:xyz模式 双目识别 还是单目?
 bool stereostart=false;//是否开始双目注水
 int o_point[3];//双目模式的原点
 /****************************插值**********************************/
-float X[3]={0,0,0};
-float Y[3]={0,0,0};
-float H[3]={110,110,110};
+float X[3]={0};
+float Y[3]={0};
+float H[3]={-110};
 float CX[11]={0};
 float CY[11]={0};
-float CH[11]={110};
+float CH[11]={-110};
 float sx,sy,sh;
 /************************引脚*************************************/
 Timer t;  //instantiate the timer object
@@ -69,9 +69,10 @@ angle ang={0,0,0};//写默认的角度 暂时先写0,0,0
 HX711 hx_r(34, 36);//SCK,DT,AMP,CO
 HX711 hx_l(38, 40);
 HX711 hx_m(42,44);
-int l_offset=0;
-int r_offset=0;//初始化offset和CO//0.00237417
-int m_offset=0;//初始化offset和CO//0.00237417
+//注意 offset十分大 大于int 范围 因此需要用long 
+long l_offset=0;
+long r_offset=0;//初始化offset和CO//0.00237417
+long m_offset=0;//初始化offset和CO//0.00237417
 float weigh_l,weigh_r ,weigh=0,weigh_m=0;
 /*******************函数声明***************************************/
 void sreceive();//串口获得xyz  mode=1
@@ -115,15 +116,18 @@ void setup() {
   delay(20);
   //压力初始化
   r_offset=hx_r.tare();
-  l_offset=hx_l.read();
-  m_offset=hx_m.read();//设置offset
+  l_offset=hx_l.tare();
+  m_offset=hx_m.tare();//设置offset
   hx_l.set_co(0.00237417);//左压力传感初始化    
   hx_r.set_co(0.00246840);
-  hx_m.set_co(0.00091604);  
+  hx_m.set_co(0.00228833);  
   hx_l.set_offset(l_offset);//76106
   hx_r.set_offset(r_offset);//右压力传感初始化
-  hx_r.set_offset(76006);
-  hx_m.set_offset(77421);
+  hx_m.set_offset(m_offset);  
+  m_offset=0;
+  r_offset=0;
+  l_offset=0;
+  //hx_r.set_offset(76006);
   //控温初始化
   ts.setOffset(0);
   myPID.SetOutputLimits(0, outputmax);//告诉PID在从0到max的范围内取值
@@ -261,9 +265,14 @@ void serialpiin(){
             }
             if(stereostart){//点击双目开始后 才开始把新的点加进去 差值计算
               float zx[5],zy[5],zh[5];
+              /*
               computedvalue(sx-o_point[0],X,zx);
               computedvalue(sy-o_point[1],Y,zy);
               computedvalue(sh-o_point[2]-125,H,zh);
+              */
+              computedvalue(sx,X,zx);
+              computedvalue(sy,Y,zy);
+              computedvalue(sh-125,H,zh);
               addtoc(zx,CX);
               addtoc(zy,CY);
               addtoc(zh,CH);
@@ -313,21 +322,23 @@ void serialhuin(){
       //Serial.println(comdata);
       switch(comdata[0]){
         case 'O'://确定原点
+          
           o_point[0]=sx;
           o_point[1]=sy;
           o_point[2]=sh;
           stereostart=true;
           dripstart=true; 
           ifpid=false;
-          //Serial.println('s');
+          Serial.print('o');
         break;//change the "x"and"y" it is possible that the high change as well; 
         case '1':
           isdrip=true;
+          Serial.print('1');
           //Serial.println('1');
         break;
         case '0':
           isdrip=false;
-          //Serial.println('0');
+          Serial.print('0');
         break;
         case 'C':
           isdrip=false;
@@ -446,10 +457,28 @@ void gettemp(){
 }
 //重量
 void getweight(){
-  hx_l.average_filter(hx_l.bias_read(),&weigh_l);
-  hx_r.average_filter(hx_r.bias_read(),&weigh_r);
-  hx_m.average_filter(hx_m.bias_read(),&weigh_m);
-  weigh=weigh_r+weigh_l;
+  /*static int count=0;
+  if(count<10){ 
+    r_offset+=hx_r.read();
+    l_offset+=hx_l.read();
+    m_offset+=hx_m.read();//设置offset
+    count++;
+  }else if(count==10){
+      Serial.println(m_offset);
+      hx_l.set_offset(l_offset/10);//76106
+      hx_r.set_offset(r_offset/10);//右压力传感初始化
+      hx_m.set_offset(m_offset/10);
+      count=11;
+  }else{
+    hx_l.average_filter(hx_l.bias_read(),&weigh_l);
+    hx_r.average_filter(hx_r.bias_read(),&weigh_r);
+    hx_m.average_filter(hx_m.bias_read(),&weigh_m);
+    weigh=weigh_r+weigh_l; 
+  }*/
+    hx_l.average_filter(hx_l.bias_read(),&weigh_l);
+    hx_r.average_filter(hx_r.bias_read(),&weigh_r);
+    hx_m.average_filter(hx_m.bias_read(),&weigh_m);
+    weigh=weigh_r+weigh_l; 
 }
 //水流机
 void waterpulse()   //measure the quantity of square wave

@@ -6,7 +6,7 @@
 extern int s,r;
 extern const int initangle;
 extern bool isdrip,dripstart;
-extern float  h,x,y,cangle;
+extern float  h,x,y,cangle,seth;
 typedef struct ANGLE angle;
 struct ANGLE{
 float angle1;

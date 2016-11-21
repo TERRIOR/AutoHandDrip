@@ -38,6 +38,8 @@ float CX[11]={0};
 float CY[11]={0};
 float CH[11]={-110};
 float sx,sy,sh;
+float zx[5],zy[5],zh[5];
+float ox[5],oy[5],oh[5];
 /************************引脚*************************************/
 Timer t;  //instantiate the timer object
 bool reached=false;
@@ -97,7 +99,7 @@ void setup() {
   digitalWrite(relaydrip,HIGH);
   digitalWrite(relaypump,HIGH);
   //串口初始化
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial1.begin(9600);
   Serial2.begin(9600);
   //机械手部分的初始化
@@ -107,9 +109,9 @@ void setup() {
   delay(20);
   xyztoangle(60, -100, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
   //xyztoangle(0, -100, 0, &ang);
-  myservo1.write(initangle+ang.angle1+3);
-  myservo2.write(initangle+ang.angle2-2);
-  myservo3.write(initangle+ang.angle3+5); 
+  myservo1.write(initangle+ang.angle1-4);//+3
+  myservo2.write(initangle+ang.angle2-3);//-2
+  myservo3.write(initangle+ang.angle3+6); //+5
   /*myservo1.write(93-20);
   myservo2.write(88-20);
   myservo3.write(95-20);*/
@@ -141,13 +143,14 @@ void setup() {
   t.every(50, getweight);//还没调好 十分不准
   //t.every(time,waterspeed);//每1000ms去计算一次流速
   t.every(300,serialappout);//每1000ms去发送给app
-  t.every(500,serialpiout);//每2000ms
+  //t.every(100,chazhi);//每1000ms去发送给app
+  //t.every(500,serialpiout);//每2000ms
 }
 
 void loop() {  
   waterreach();
   t.update();
-  serialpiin();
+  serialpiin2();
   if(mode==0){
     //Serial.println("mode");
     receivesrh();
@@ -205,9 +208,9 @@ void receivesrh(){
         case 'h':
             //isdrip=true;
            if(comdata.length()>3){
-              h=comdata.substring(1,3).toInt()-160;
+              seth=comdata.substring(1,3).toInt()-160;
             }else{
-              h=comdata.substring(1).toInt()-160;
+              seth=comdata.substring(1).toInt()-160;
             }
         break;//only change the "high"
         case '1'://开启冲煮 app开始计时
@@ -226,7 +229,7 @@ void receivesrh(){
       }
       setinmaxint(&r,49,0);
       setinmaxint(&s,100,0);
-      setinmax(&h,-100,-130);
+      setinmax(&h,-90,-115);
       //Serial.print(comdata);
       comdata = "";
     }
@@ -263,21 +266,98 @@ void serialpiin(){
             }else {
               sy=comdata.substring(yindex+1).toInt();
             }
-            if(stereostart){//点击双目开始后 才开始把新的点加进去 差值计算
-              float zx[5],zy[5],zh[5];
-              /*
-              computedvalue(sx-o_point[0],X,zx);
-              computedvalue(sy-o_point[1],Y,zy);
-              computedvalue(sh-o_point[2]-125,H,zh);
-              */
-              computedvalue(sx,X,zx);
-              computedvalue(sy,Y,zy);
-              computedvalue(sh-125,H,zh);
-              addtoc(zx,CX);
-              addtoc(zy,CY);
-              addtoc(zh,CH);
+          if(stereostart){//点击双目开始后 才开始把新的点加进去 差值计算 
+            computedvalue(sx,X,zx);
+            computedvalue(sy,Y,zy);
+            computedvalue(sh-125,H,zh);
+            addtoc(zx,CX);
+            addtoc(zy,CY);
+            addtoc(zh,CH);
+            if(isdrip&&dripstart){
+              for(int i=0;i<5;i++){
+                ox[i]=getpoint(CX);
+                oy[i]=getpoint(CY);
+                oh[i]=getpoint(CH);
+                //Serial.println(String("x")+(int)sx+"y"+(int)sy+"h"+(int)sh);
+              }
             }
+          }
         break;//change the "x"and"y" it is possible that the high change as well;
+        case '0':
+          mode=0;
+        break;
+        case '2':
+          mode=2;
+        break;
+        case '3':
+          //ifrecognize=true;
+        break;
+        case 'p':
+          powdercircle=comdata.substring(1,3).toInt();
+        break;
+        case 'f':
+          foam=comdata.substring(1,3).toInt();
+        break;
+         case 't':
+          myPID.SetIterm(0);
+          ifpid=true;//接收到新的温度可以进行pid加热
+          if(comdata.length()>3){
+            Setpoint=comdata.substring(1,3).toInt();
+          }else{
+            Setpoint=comdata.substring(1).toInt();
+          }
+        break;
+      }
+      comdata = "";
+    }
+}
+void serialpiin2(){
+     while (Serial.available() > 0 )  
+    {
+      char com=char(Serial.read());
+      if(com==' '){
+        break;
+      }
+      comdata += com;
+      delay(6); 
+    }
+    if (comdata.length() > 0)
+    {
+      int yindex=0;
+      int hindex=0;
+      //Serial.println(comdata);
+      switch(comdata[0]){
+        case 's':
+            if(mode!=2){
+                  break;
+                }
+            if(comdata.length()>3){
+              s=comdata.substring(1,3).toInt();
+            }else{
+              s=comdata.substring(1).toInt();
+            }  
+        break;//change the "x"and"y" it is possible that the high change as well; 
+        case 'r':
+            //isdrip=true;
+            if(mode!=2){
+              break;
+            }
+            if(comdata.length()>3){
+              r=comdata.substring(1,3).toInt();
+            }else{
+              r=comdata.substring(1).toInt();
+            }
+        break;
+        case 'h':
+          if(mode!=2){
+                break;
+              }
+           if(comdata.length()>3){
+              seth=comdata.substring(1,3).toInt()-115;
+            }else{
+              seth=comdata.substring(1).toInt()-115;
+            }
+        break;//only change the "high"
         case '0':
           mode=0;
         break;
@@ -322,10 +402,11 @@ void serialhuin(){
       //Serial.println(comdata);
       switch(comdata[0]){
         case 'O'://确定原点
-          
+          /*
           o_point[0]=sx;
           o_point[1]=sy;
           o_point[2]=sh;
+          */
           stereostart=true;
           dripstart=true; 
           ifpid=false;
@@ -333,12 +414,12 @@ void serialhuin(){
         break;//change the "x"and"y" it is possible that the high change as well; 
         case '1':
           isdrip=true;
-          Serial.print('1');
+          Serial.print('s');
           //Serial.println('1');
         break;
         case '0':
           isdrip=false;
-          Serial.print('0');
+          Serial.print('n');
         break;
         case 'C':
           isdrip=false;
@@ -347,6 +428,7 @@ void serialhuin(){
           reached=false; 
           ifpid=true;
           Setpoint=70;
+          Serial.print('c');
           //Serial.println('C');
         break;
       }
@@ -356,52 +438,46 @@ void serialhuin(){
 //机械臂运动
 void movetop(){
   if(isdrip&&dripstart){
-    if(mode==0){
-      cangle+=PI*s/2500;//2*PI/20*s/100/5
-      if(cangle>6.28){
-        cangle-=2*PI;
-      }
-      x= (float) (r*cos(cangle));
-      y= (float) (r*sin(cangle));
-    }else if(mode==2){
-      x=getpoint(CX);
-      y=getpoint(CY);
-      h=getpoint(CH);
+    //减缓h瞬间下降 慢慢下
+    if(seth-h>3){
+      h+=3;
+    }else if(seth-h<-3){
+      h-=3;
+    }else {
+      h=seth;
     }
+    //mode =1
+    cangle+=PI*s/2500;//2*PI/20*s/100/5
+    if(cangle>6.28){
+      cangle-=2*PI;
+    }
+    x= (float) (r*cos(cangle));
+    y= (float) (r*sin(cangle));
+    //Serial.println(String("")+"x"+(int)x+"y"+(int)y+"h"+(int)h);
     setinmax(&x,45,-45);
     setinmax(&y,45,-45);
-    setinmax(&h,-95,-125);//60~140
-    /*
-    Serial.print("x:");
-    Serial.print(x);
-    Serial.print("y:");
-    Serial.print(y);
-    Serial.print("h:");
-    Serial.println(h);
-    */
-    xyztoangle(x+2, h, y-8, &ang);
-    /*Serial.print("  ");
-    Serial.print(ang.angle1);
-    Serial.print("  ");
-    Serial.print(ang.angle2);
-    Serial.print("  ");
-    Serial.println(ang.angle3);*/
-    if(mode==0||(mode==2&&stereostart)){
-      myservo1.write(initangle+ang.angle1+3);
-      myservo2.write(initangle+ang.angle2-2);
-      myservo3.write(initangle+ang.angle3+5); 
+    setinmax(&h,-90,-115);//60~140
+    //setinmax(&sx,45,-45);
+    //setinmax(&sy,45,-45);
+    //setinmax(&sh-110,-95,-125);//60~140
+    xyztoangle(x, h, y-5, &ang);
+    //xyztoangle(sx+2, sh, sy-8, &ang);
+    if(mode==0||(mode==2&&stereostart)){ 
+      myservo1.write(initangle+ang.angle1-4);
+      myservo2.write(initangle+ang.angle2-3);
+      myservo3.write(initangle+ang.angle3+6); 
       digitalWrite(relaydrip,LOW);
       ifmove=true;
     }
   }else{
     //xyztoangle(2, -100, -8, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
-  
     if(ifmove)
     {
-      xyztoangle(60, -100, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
-      myservo1.write(initangle+ang.angle1+3);
-      myservo2.write(initangle+ang.angle2-2);
-      myservo3.write(initangle+ang.angle3+5); 
+      //xyztoangle(0, -100, 0, &ang);
+      xyztoangle(50, -100, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
+      myservo1.write(initangle+ang.angle1-4);
+      myservo2.write(initangle+ang.angle2-3);
+      myservo3.write(initangle+ang.angle3+6); 
       ifmove=false;
     }
 
@@ -593,4 +669,22 @@ void sreceive(){
       //Serial.print(comdata);
       comdata = "";
     }
+}
+void chazhi(){
+  if(stereostart){//点击双目开始后 才开始把新的点加进去 差值计算 
+    computedvalue(sx,X,zx);
+    computedvalue(sy,Y,zy);
+    computedvalue(sh-125,H,zh);
+    addtoc(zx,CX);
+    addtoc(zy,CY);
+    addtoc(zh,CH);
+    if(isdrip&&dripstart){
+      for(int i=0;i<5;i++){
+        ox[i]=getpoint(CX);
+        oy[i]=getpoint(CY);
+        oh[i]=getpoint(CH);
+        //Serial.println(String("x")+(int)sx+"y"+(int)sy+"h"+(int)sh);
+      }
+    }
+  }
 }

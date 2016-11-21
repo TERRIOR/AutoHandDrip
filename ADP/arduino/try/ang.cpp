@@ -5,9 +5,9 @@
 const double leg = 6.28*120/360;
 const int initangle=90;
 //shin:小腿 thigh :大腿  base:上方的 effect:下面的
-const float shin=117,thigh=50,basesize=35,effectorsize=20;
+const float shin=117,thigh=50,basesize=55,effectorsize=20;
 bool isdrip=false;
-float x=0,y=0,h=50;
+float x=0,y=0,h=50,seth;
 int s,r;
 float cangle;
 bool dripstart=false;

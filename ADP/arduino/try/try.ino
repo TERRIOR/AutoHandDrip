@@ -54,6 +54,8 @@ double waterFlow = 0;
 double lastwaterFlow = 0;
 const int time=1000;
 float currentSpeed = 0;
+/************************************************/
+int hH,S,V,P;
 /*******************pid参数**********************/
 const int outputmax = 100;//输出的最大值
 int out;//最终的输出
@@ -61,7 +63,7 @@ int pidstep=0;//脉宽
 Max6675 ts(6,7,8);//原为9,10,11没必要
 // 定义我们将要使用的变量
 double Setpoint=90, Input=0, Output;//pid库计算的变量
-double kp=5,ki=0.001,kd=0;//pid参数
+double kp=8,ki=0.001,kd=0;//pid参数
 //指定链接和最初的调优参数
 PID myPID(&Input, &Output, &Setpoint,kp,ki,kd, DIRECT);//初始化 传递参数指针
 /*******************舵机参数******************************/
@@ -139,12 +141,12 @@ void setup() {
   FlexiTimer2::set(20, 1.0/1000, movetop); // call every 500 1ms "ticks"
   FlexiTimer2::start();
   t.every(250, gettemp);//250更新一次温度
-  //t.every(50,pidcontrol);//
+  t.every(50,pidcontrol);//
   t.every(50, getweight);//还没调好 十分不准
   //t.every(time,waterspeed);//每1000ms去计算一次流速
   t.every(300,serialappout);//每1000ms去发送给app
   //t.every(100,chazhi);//每1000ms去发送给app
-  //t.every(500,serialpiout);//每2000ms
+  t.every(500,serialpiout);//每2000ms
 }
 
 void loop() {  
@@ -203,17 +205,28 @@ void receivesrh(){
           }else{
             Setpoint=comdata.substring(1).toInt();
           }
+
           //Serial.println(String("")+"setpoint:"+Setpoint);
         break;
         case 'h':
             //isdrip=true;
            if(comdata.length()>3){
-              seth=comdata.substring(1,3).toInt()-160;
+              seth=comdata.substring(1,3).toInt()-150;
             }else{
-              seth=comdata.substring(1).toInt()-160;
+              seth=comdata.substring(1).toInt()-150;
             }
         break;//only change the "high"
         case '1'://开启冲煮 app开始计时
+          static bool reset=true;
+          if(reset){
+            r_offset=hx_r.tare();
+            l_offset=hx_l.tare();
+            m_offset=hx_m.tare();//设置offset
+            hx_l.set_offset(l_offset);//76106
+            hx_r.set_offset(r_offset);//右压力传感初始化
+            hx_m.set_offset(m_offset);
+            reset=false;   
+          }
           dripstart=true;
           ifpid=false;
         break;
@@ -229,7 +242,7 @@ void receivesrh(){
       }
       setinmaxint(&r,49,0);
       setinmaxint(&s,100,0);
-      setinmax(&h,-90,-115);
+      setinmax(&h,-85,-110);
       //Serial.print(comdata);
       comdata = "";
     }
@@ -382,6 +395,30 @@ void serialpiin2(){
             Setpoint=comdata.substring(1).toInt();
           }
         break;
+        case 'a':
+          if(comdata.length()>1){
+              hH=comdata.substring(1).toInt();
+              Serial1.print(String(" a")+hH);
+            }
+        break;
+        case 'b':
+          if(comdata.length()>1){
+              S=comdata.substring(1).toInt();
+              Serial1.print(String(" b")+S);
+            }
+        break;
+        case 'c':
+          if(comdata.length()>1){
+              V=comdata.substring(1).toInt();
+              Serial1.print(String(" c")+V);
+            }
+        break;
+        case 'd':
+          if(comdata.length()>1){
+              P=comdata.substring(1).toInt();
+              Serial1.print(String(" d")+P);
+            }
+        break;        
       }
       comdata = "";
     }
@@ -439,10 +476,10 @@ void serialhuin(){
 void movetop(){
   if(isdrip&&dripstart){
     //减缓h瞬间下降 慢慢下
-    if(seth-h>3){
-      h+=3;
-    }else if(seth-h<-3){
-      h-=3;
+    if(seth-h>1){
+      h+=1;
+    }else if(seth-h<-1){
+      h-=1;
     }else {
       h=seth;
     }
@@ -456,7 +493,7 @@ void movetop(){
     //Serial.println(String("")+"x"+(int)x+"y"+(int)y+"h"+(int)h);
     setinmax(&x,45,-45);
     setinmax(&y,45,-45);
-    setinmax(&h,-90,-115);//60~140
+    setinmax(&h,-85,-110);//60~140
     //setinmax(&sx,45,-45);
     //setinmax(&sy,45,-45);
     //setinmax(&sh-110,-95,-125);//60~140
@@ -474,7 +511,7 @@ void movetop(){
     if(ifmove)
     {
       //xyztoangle(0, -100, 0, &ang);
-      xyztoangle(50, -100, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
+      xyztoangle(50, -90, 0, &ang);//这个坐标是一开始不会出现在摄像头视角的世界坐标
       myservo1.write(initangle+ang.angle1-4);
       myservo2.write(initangle+ang.angle2-3);
       myservo3.write(initangle+ang.angle3+6); 
@@ -533,24 +570,6 @@ void gettemp(){
 }
 //重量
 void getweight(){
-  /*static int count=0;
-  if(count<10){ 
-    r_offset+=hx_r.read();
-    l_offset+=hx_l.read();
-    m_offset+=hx_m.read();//设置offset
-    count++;
-  }else if(count==10){
-      Serial.println(m_offset);
-      hx_l.set_offset(l_offset/10);//76106
-      hx_r.set_offset(r_offset/10);//右压力传感初始化
-      hx_m.set_offset(m_offset/10);
-      count=11;
-  }else{
-    hx_l.average_filter(hx_l.bias_read(),&weigh_l);
-    hx_r.average_filter(hx_r.bias_read(),&weigh_r);
-    hx_m.average_filter(hx_m.bias_read(),&weigh_m);
-    weigh=weigh_r+weigh_l; 
-  }*/
     hx_l.average_filter(hx_l.bias_read(),&weigh_l);
     hx_r.average_filter(hx_r.bias_read(),&weigh_r);
     hx_m.average_filter(hx_m.bias_read(),&weigh_m);
@@ -570,18 +589,18 @@ void waterspeed(){
 void serialappout(){
   static int count=0;
   count++; 
-  switch(count){
+   switch(count){
     case 1:
     //if(powdercircle!=0)
       Serial1.print(String(" ")+"p"+(int)powdercircle);
     break;
     case 2:
     if(weigh>0) 
-      Serial1.print(String(" ")+"w"+(int)weigh);
+      //Serial1.print(String(" ")+"w"+(int)weigh);
     break;
     case 3:
-    if(weigh_m>0) 
-      Serial1.print(String(" ")+"m"+(int)weigh_m);
+    if(weigh_m+(int)weigh>0) 
+      Serial1.print(String(" ")+"m"+(int)(weigh_m+weigh));
     break;
     case 4:
     //if(waterFlow!=0)
